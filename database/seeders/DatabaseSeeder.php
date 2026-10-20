@@ -8,7 +8,13 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Roles, permissions, units, the Walk-in customer and the
-        // administrator are added in the seeder task.
+        // Order matters: roles need permissions, and the admin needs roles.
+        $this->call([
+            PermissionSeeder::class,
+            RoleSeeder::class,
+            UnitSeeder::class,
+            CustomerSeeder::class,
+            AdminUserSeeder::class,
+        ]);
     }
 }
