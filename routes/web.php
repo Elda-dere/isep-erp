@@ -13,3 +13,6 @@ Route::get('/hello', function () {
         'message' => 'This text came from Laravel and was drawn by Vue.',
     ]);
 });
+
+// Each module keeps its own route file, with one line here (agreed with Developer B).
+require __DIR__.'/catalogue.php';
