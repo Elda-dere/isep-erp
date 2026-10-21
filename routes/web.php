@@ -15,5 +15,6 @@ Route::get('/hello', function () {
 });
 
 // Each module keeps its own route file, with one line here (agreed with Developer B).
-require __DIR__.'/catalogue.php';
-require __DIR__.'/auth.php';
+require __DIR__ . '/catalogue.php';
+require __DIR__ . '/inventory.php';
+require __DIR__ . '/auth.php';
