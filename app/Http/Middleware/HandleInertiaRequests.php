@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Permission;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -27,9 +28,10 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Define the props that are shared by default.
+     * Data every page receives.
      *
-     * @see https://inertiajs.com/shared-data
+     * The permission list only decides which menu items to SHOW.
+     * The server still checks every request (NFR-SEC-03).
      *
      * @return array<string, mixed>
      */
@@ -37,7 +39,30 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            //
+            'auth' => fn () => $this->authData($request),
+        ];
+    }
+
+    /** @return array{user: array<string, mixed>|null, permissions: array<int, string>} */
+    private function authData(Request $request): array
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->is_active) {
+            return ['user' => null, 'permissions' => []];
+        }
+
+        return [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'permissions' => Permission::query()
+                ->whereHas('roles.users', fn ($query) => $query->where('users.id', $user->id))
+                ->orderBy('name')
+                ->pluck('name')
+                ->all(),
         ];
     }
 }
