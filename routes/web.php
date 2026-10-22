@@ -3,11 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', fn () => redirect()->route('dashboard'));
 
-// Temporary page that proves Laravel -> Inertia -> Vue works. Removed after the login task.
+// Temporary page that proves Laravel -> Inertia -> Vue works. Removed in a later cleanup.
 Route::get('/hello', function () {
     return Inertia::render('Hello', [
         'message' => 'This text came from Laravel and was drawn by Vue.',

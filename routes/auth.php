@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,9 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
+
+    Route::get('/account/password', [ChangePasswordController::class, 'edit'])->name('password.edit');
+    Route::put('/account/password', [ChangePasswordController::class, 'update'])->name('password.update');
 
     // Placeholder until the dashboard task replaces it.
     Route::get('/dashboard', fn (Request $request) => Inertia::render('Dashboard', [
