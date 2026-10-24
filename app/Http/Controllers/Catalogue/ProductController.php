@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ProductRequest;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Unit;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,7 +17,7 @@ use Inertia\Response;
 
 class ProductController extends Controller
 {
-    // The fields we record when a product is created.
+    // The fields we record when a product is created, and send to the edit form.
     private const AUDITED_FIELDS = [
         'category_id',
         'unit_id',
@@ -56,6 +57,27 @@ class ProductController extends Controller
         ]);
     }
 
+    // Shows the empty form. The dropdowns need the categories and units.
+    public function create(): Response
+    {
+        return Inertia::render('Catalogue/Products/Form', [
+            'product' => null,
+            'categories' => Category::orderBy('name')->get(['id', 'name']),
+            'units' => Unit::orderBy('name')->get(['id', 'name', 'symbol']),
+        ]);
+    }
+
+    // Shows the same form, filled with the product's current values.
+    // only() applies the model casts, so prices arrive as exact strings like "10.00".
+    public function edit(Product $product): Response
+    {
+        return Inertia::render('Catalogue/Products/Form', [
+            'product' => $product->only(['id', ...self::AUDITED_FIELDS]),
+            'categories' => Category::orderBy('name')->get(['id', 'name']),
+            'units' => Unit::orderBy('name')->get(['id', 'name', 'symbol']),
+        ]);
+    }
+
     public function store(ProductRequest $request): RedirectResponse
     {
         // One transaction: if the audit row cannot be written, the product is not created either.
@@ -81,8 +103,6 @@ class ProductController extends Controller
             }
 
             // Collect old and new values for the changed fields only.
-            // getOriginal() is the value before; the attribute is the value after.
-            // Money and quantities stay exact decimal strings thanks to the model casts.
             $old = [];
             $new = [];
             foreach ($changed as $field) {
