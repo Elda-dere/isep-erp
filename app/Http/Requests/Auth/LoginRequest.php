@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -41,6 +43,8 @@ class LoginRequest extends FormRequest
         if (! Auth::attempt($credentials)) {
             RateLimiter::hit($this->throttleKey());
 
+            $this->logFailure($credentials['email']);
+
             // One message for every failure, so the page never reveals which part was wrong.
             throw ValidationException::withMessages([
                 'email' => 'These credentials do not match our records.',
@@ -48,6 +52,20 @@ class LoginRequest extends FormRequest
         }
 
         RateLimiter::clear($this->throttleKey());
+    }
+
+    /** The audit log may say why a login failed. The page never does (AUTH-07). */
+    private function logFailure(string $email): void
+    {
+        $user = User::where('email', $email)->first();
+
+        $reason = ! $user ? 'unknown_email' : (! $user->is_active ? 'inactive_account' : 'wrong_password');
+
+        // The typed password is never stored.
+        AuditLogger::log('auth.login_failed', $user ? 'user' : null, $user?->id, null, [
+            'email' => $email,
+            'reason' => $reason,
+        ]);
     }
 
     private function ensureIsNotRateLimited(): void

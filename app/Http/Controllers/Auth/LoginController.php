@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,8 @@ class LoginController
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
+
+        AuditLogger::log('auth.login', 'user', Auth::id());
 
         // A new session id after login stops session fixation (NFR-SEC-04).
         $request->session()->regenerate();
