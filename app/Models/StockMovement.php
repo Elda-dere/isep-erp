@@ -16,6 +16,16 @@ class StockMovement extends Model
     public const TYPE_ADJUSTMENT = 'adjustment';
     public const TYPE_TRANSFER_IN = 'transfer_in';
     public const TYPE_TRANSFER_OUT = 'transfer_out';
+    // All allowed movement types in one list: used to validate filters and fill dropdowns.
+    public const TYPES = [
+        self::TYPE_OPENING,
+        self::TYPE_RECEIPT,
+        self::TYPE_SALE,
+        self::TYPE_SALE_REVERSAL,
+        self::TYPE_ADJUSTMENT,
+        self::TYPE_TRANSFER_IN,
+        self::TYPE_TRANSFER_OUT,
+    ];
 
     protected $fillable = [
         'product_id',
