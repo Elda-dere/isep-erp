@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -24,7 +25,8 @@ class ChangePasswordController
         // The User model hashes the password automatically (the "hashed" cast).
         $request->user()->update(['password' => $validated['password']]);
 
-        // TODO(audit-log task): record "user.password_changed" (AUD-02).
+        // Only the fact is logged, never any password.
+        AuditLogger::log('user.password_changed', 'user', $request->user()->id);
 
         return back();
     }
