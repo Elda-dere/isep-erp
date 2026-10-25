@@ -12,4 +12,9 @@ return [
         'password' => env('ADMIN_PASSWORD'),
     ],
 
+    /*
+    | Times are stored in UTC and shown in this business time zone (DR-07, NFR-LOC-02).
+    */
+    'timezone' => env('ERP_TIMEZONE', 'Africa/Addis_Ababa'),
+
 ];

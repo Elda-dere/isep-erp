@@ -5,6 +5,7 @@
 //   { label: 'Employees', href: '/employees', permission: 'employees.view' },
 export const menu = [
     { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Audit log', href: '/audit-logs', permission: 'audit.view' },
     // Catalogue
     { label: 'Products', href: '/products', permission: 'products.view' },
     // Inventory: warehouses and stock use the same "view" permission
