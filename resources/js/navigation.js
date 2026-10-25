@@ -5,7 +5,11 @@
 //   { label: 'Employees', href: '/employees', permission: 'employees.view' },
 export const menu = [
     { label: 'Dashboard', href: '/dashboard' },
+ feature/role-admin
+    { label: 'Roles', href: '/roles', permission: 'roles.manage' },
+
     { label: 'Users', href: '/users', permission: 'users.view' },
+ main
     { label: 'Audit log', href: '/audit-logs', permission: 'audit.view' },
     // Catalogue
     { label: 'Products', href: '/products', permission: 'products.view' },
@@ -13,3 +17,4 @@ export const menu = [
     { label: 'Warehouses', href: '/warehouses', permission: 'inventory.view' },
     { label: 'Stock', href: '/stock', permission: 'inventory.view' },
 ];
+
