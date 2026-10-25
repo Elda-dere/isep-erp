@@ -5,9 +5,16 @@
 //   { label: 'Employees', href: '/employees', permission: 'employees.view' },
 export const menu = [
     { label: 'Dashboard', href: '/dashboard' },
+ feature/departments-positions
     { label: 'Positions', href: '/positions', permission: 'positions.manage' },
     { label: 'Departments', href: '/departments', permission: 'departments.manage' },
+
+ feature/role-admin
+ main
     { label: 'Roles', href: '/roles', permission: 'roles.manage' },
+
+    { label: 'Users', href: '/users', permission: 'users.view' },
+ main
     { label: 'Audit log', href: '/audit-logs', permission: 'audit.view' },
     // Catalogue
     { label: 'Products', href: '/products', permission: 'products.view' },
@@ -15,3 +22,4 @@ export const menu = [
     { label: 'Warehouses', href: '/warehouses', permission: 'inventory.view' },
     { label: 'Stock', href: '/stock', permission: 'inventory.view' },
 ];
+
