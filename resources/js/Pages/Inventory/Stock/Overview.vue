@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import PagerLinks from '../../../Components/PagerLinks.vue';
 
 const props = defineProps({
@@ -9,6 +9,11 @@ const props = defineProps({
     categories: Array,
     warehouses: Array,
 });
+const page = usePage();
+
+// The button is only a convenience: the server checks inventory.adjust on every request anyway.
+const canAdjust = computed(() => page.props.auth?.permissions?.includes('inventory.adjust'));
+
 
 // The filter boxes start with the values from the URL, so a reload keeps them.
 const search = ref(props.filters?.search ?? '');
@@ -54,7 +59,16 @@ function isLow(product) {
                 <h1 class="text-2xl font-semibold">Stock overview</h1>
                 <p class="mt-1 text-sm text-gray-500">{{ products.total }} product(s)</p>
             </div>
-            <Link href="/stock/low" class="flex min-h-11 items-center rounded border px-4">Low stock</Link>
+                        <div class="flex gap-2">
+                <Link href="/stock/low" class="flex min-h-11 items-center rounded border px-4">Low stock</Link>
+                <Link
+                    v-if="canAdjust"
+                    href="/stock/adjust"
+                    class="flex min-h-11 items-center rounded bg-gray-900 px-4 text-white"
+                >
+                    Adjust stock
+                </Link>
+            </div>
         </div>
 
         <!-- Filters: labels are hidden visually but still read by screen readers -->

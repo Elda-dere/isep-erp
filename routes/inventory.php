@@ -24,7 +24,9 @@ Route::middleware('permission:warehouses.manage')->group(function () {
 });
 
 // Changing stock (opening stock, adjustments) needs inventory.adjust.
+// The form page is in this group too, for the same reason as above.
 Route::middleware('permission:inventory.adjust')->group(function () {
+    Route::get('/stock/adjust', [StockController::class, 'create'])->name('stock.form');
     Route::post('/stock/opening', [StockController::class, 'storeOpening'])->name('stock.opening');
     Route::post('/stock/adjustments', [StockController::class, 'storeAdjustment'])->name('stock.adjust');
 });
