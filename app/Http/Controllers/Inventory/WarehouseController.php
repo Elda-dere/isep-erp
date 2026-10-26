@@ -20,6 +20,22 @@ class WarehouseController extends Controller
         ]);
     }
 
+    // Shows the empty form. "warehouse" is null, which tells the page it is in "create" mode.
+    public function create(): Response
+    {
+        return Inertia::render('Inventory/Warehouses/Form', [
+            'warehouse' => null,
+        ]);
+    }
+
+    // Shows the same form, filled with the warehouse's current values.
+    public function edit(Warehouse $warehouse): Response
+    {
+        return Inertia::render('Inventory/Warehouses/Form', [
+            'warehouse' => $warehouse->only(['id', 'name', 'location']),
+        ]);
+    }
+
     public function store(WarehouseRequest $request): RedirectResponse
     {
         // Create and audit in one transaction, so neither exists without the other.
@@ -35,7 +51,7 @@ class WarehouseController extends Controller
     public function update(WarehouseRequest $request, Warehouse $warehouse): RedirectResponse
     {
         DB::transaction(function () use ($request, $warehouse) {
-            // Same pattern as products: fill in memory, ask which fields really changed, then save.
+            // fill() sets the new values in memory, and getDirty() tells us what really changed.
             $warehouse->fill($request->validated());
             $changed = array_keys($warehouse->getDirty());
 

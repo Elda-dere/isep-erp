@@ -15,8 +15,11 @@ Route::middleware('permission:inventory.view')->group(function () {
 });
 
 // Creating and editing warehouses needs warehouses.manage.
+// The form pages are in this group too: a user who cannot save should not open the form.
 Route::middleware('permission:warehouses.manage')->group(function () {
+    Route::get('/warehouses/create', [WarehouseController::class, 'create'])->name('warehouses.create');
     Route::post('/warehouses', [WarehouseController::class, 'store'])->name('warehouses.store');
+    Route::get('/warehouses/{warehouse}/edit', [WarehouseController::class, 'edit'])->name('warehouses.edit');
     Route::put('/warehouses/{warehouse}', [WarehouseController::class, 'update'])->name('warehouses.update');
 });
 
