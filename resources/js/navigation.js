@@ -12,6 +12,8 @@ export const menu = [
     { label: 'Audit log', href: '/audit-logs', permission: 'audit.view' },
     // Catalogue
     { label: 'Products', href: '/products', permission: 'products.view' },
+    { label: 'Categories', href: '/categories', permission: 'products.view' },
+    { label: 'Units', href: '/units', permission: 'products.view' },
     // Inventory: warehouses and stock use the same "view" permission
     { label: 'Warehouses', href: '/warehouses', permission: 'inventory.view' },
     { label: 'Stock', href: '/stock', permission: 'inventory.view' },
