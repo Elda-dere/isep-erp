@@ -17,4 +17,5 @@ export const menu = [
     // Inventory: warehouses and stock use the same "view" permission
     { label: 'Warehouses', href: '/warehouses', permission: 'inventory.view' },
     { label: 'Stock', href: '/stock', permission: 'inventory.view' },
+    { label: 'Suppliers', href: '/suppliers', permission: 'suppliers.manage' },
 ];
