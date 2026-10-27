@@ -25,3 +25,5 @@ require __DIR__ . '/organisation.php';
 require __DIR__ . '/users.php';
 
 require __DIR__ . '/employees.php';
+
+require __DIR__ . '/procurement.php';
