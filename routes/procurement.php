@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Procurement\PurchaseOrderController;
 use App\Http\Controllers\Procurement\SupplierController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,4 +13,14 @@ Route::middleware('permission:suppliers.manage')->group(function () {
     Route::get('/suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');
     Route::put('/suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
     Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy');
+});
+
+// Purchase orders. Part 3 adds the list and detail pages under purchase_orders.view,
+// and the Place and Cancel actions under purchase_orders.manage.
+// "create" must stay ABOVE the routes with {purchaseOrder}, or "create" would be read as an order id.
+Route::middleware('permission:purchase_orders.manage')->group(function () {
+    Route::get('/purchase-orders/create', [PurchaseOrderController::class, 'create'])->name('purchase_orders.create');
+    Route::post('/purchase-orders', [PurchaseOrderController::class, 'store'])->name('purchase_orders.store');
+    Route::get('/purchase-orders/{purchaseOrder}/edit', [PurchaseOrderController::class, 'edit'])->name('purchase_orders.edit');
+    Route::put('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'update'])->name('purchase_orders.update');
 });
