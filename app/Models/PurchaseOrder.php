@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Brick\Math\BigDecimal;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PurchaseOrder extends Model
 {
@@ -28,5 +30,30 @@ class PurchaseOrder extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    // created_by points to users.id (SRS assumption A-02).
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    // Lines keep the order in which they were entered.
+    public function items(): HasMany
+    {
+        return $this->hasMany(PurchaseOrderItem::class)->orderBy('id');
+    }
+
+    // PRC-04: the total is calculated from the lines and never stored.
+    // It is the sum of each line's rounded total, as an exact decimal string like "25.01".
+    public function total(): string
+    {
+        $sum = BigDecimal::zero()->toScale(2);
+
+        foreach ($this->items as $item) {
+            $sum = $sum->plus($item->lineTotal());
+        }
+
+        return (string) $sum;
     }
 }
