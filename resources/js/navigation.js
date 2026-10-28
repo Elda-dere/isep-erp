@@ -18,4 +18,5 @@ export const menu = [
     { label: 'Warehouses', href: '/warehouses', permission: 'inventory.view' },
     { label: 'Stock', href: '/stock', permission: 'inventory.view' },
     { label: 'Suppliers', href: '/suppliers', permission: 'suppliers.manage' },
+    { label: 'Purchase orders', href: '/purchase-orders', permission: 'purchase_orders.view' },
 ];
