@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
 import FlashMessage from '../../../Components/FlashMessage.vue';
 
 const props = defineProps({
@@ -100,9 +100,9 @@ function submit() {
     }
 }
 
-// Part 3 points this at the list of orders.
+// Back to the order itself when editing, or to the list when creating.
 function cancel() {
-    window.history.back();
+    router.visit(isEdit.value ? `/purchase-orders/${props.order.id}` : '/purchase-orders');
 }
 </script>
 

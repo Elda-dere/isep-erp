@@ -218,7 +218,7 @@ class PurchaseOrderScreensTest extends TestCase
             'lines' => [['product_id' => $this->juice->id, 'quantity' => '3', 'unit_cost' => '4.00']],
         ])
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('purchase_orders.edit', $order));
+            ->assertRedirect(route('purchase_orders.show', $order));
 
         $fresh = $order->fresh();
         $this->assertSame($other->id, (int) $fresh->supplier_id);
