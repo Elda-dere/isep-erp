@@ -1,58 +1,68 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Integrated ERP (ISEP-ERP)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Inventory, sales, payments and employee management for one organisation.
+Laravel 13, Vue 3, Inertia.js, Tailwind CSS and MySQL, following the project SRS.
 
-## About Laravel
+## Requirements
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+PHP 8.3 or newer, Composer 2, Node.js with npm, MySQL 8 (Laragon works well on Windows), Git.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## First-time setup
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+1. Clone the repository and open the folder.
+2. Install the packages:
 
-## Learning Laravel
+        composer install
+        npm install
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+3. Create the settings file and the application key:
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+        copy .env.example .env
+        php artisan key:generate
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+4. In phpMyAdmin create TWO empty databases, both with collation utf8mb4_unicode_ci:
+   isep_erp (the real data) and isep_erp_test (wiped by every test run).
+5. Open .env and set ADMIN_EMAIL and ADMIN_PASSWORD (at least 10 characters, in double quotes).
+   Never commit .env.
+6. Create the tables and the starting data (roles, permissions, units, Walk-in customer, admin):
 
-## Agentic Development
+        php artisan migrate
+        php artisan db:seed
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+7. Build the front end and start the site, then sign in with ADMIN_EMAIL and ADMIN_PASSWORD:
 
-```bash
-composer require laravel/boost --dev
+        npm run build
+        php artisan serve
 
-php artisan boost:install
-```
+## Tests
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+        php artisan test
 
-## Contributing
+Tests use the isep_erp_test database and WIPE it on every run. Before running them, check that
+phpunit.xml says isep_erp_test and never isep_erp.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Rules for the team
 
-## Code of Conduct
+- The schema is exactly the 29 business tables of the SRS. Sessions, cache and queues use files,
+  so .env keeps SESSION_DRIVER=file, CACHE_STORE=file, QUEUE_CONNECTION=sync.
+- Only migrations change the database. Nobody edits a migration that is already in main.
+- Money is decimal(12,2), quantities are decimal(12,3). Never floats.
+- The server checks every permission. Hiding a menu item is not security.
+- Never commit .env, passwords, API keys or Chapa secrets.
+- One branch per task, a Pull Request into main, merged with "Create a merge commit".
+- Resolving a conflict: delete the WHOLE marker lines, then run the checks (php -l, npm run build,
+  php artisan test) before committing.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Where things live
 
-## Security Vulnerabilities
+| What | Where |
+|---|---|
+| Routes, one file per module, each required once in routes/web.php | routes/*.php |
+| Pages (Vue, capital P) | resources/js/Pages |
+| Layout and menu entries | resources/js/Layouts/AppLayout.vue, resources/js/navigation.js |
+| Permission names and role map | database/seeders/PermissionSeeder.php, RoleSeeder.php |
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Owners
 
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Access control, audit log, employees, QR attendance, dashboard: Eldana.
+Catalogue, inventory, procurement, sales, Chapa payments: Hawi.
