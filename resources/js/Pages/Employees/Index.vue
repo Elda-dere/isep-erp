@@ -16,6 +16,15 @@ const page = usePage();
 // Hiding the buttons is only convenience. The server checks every request.
 const canManage = computed(() => page.props.auth?.permissions?.includes('employees.manage') ?? false);
 
+// The download link carries the filters that are applied right now.
+const exportUrl = computed(() => {
+    const query = new URLSearchParams(
+        Object.entries(props.filters ?? {}).filter(([key, value]) => ['search', 'department', 'position', 'status'].includes(key) && value),
+    ).toString();
+
+    return '/employees/export' + (query ? '?' + query : '');
+});
+
 const form = reactive({
     search: props.filters?.search ?? '',
     department: props.filters?.department ?? '',
@@ -66,9 +75,12 @@ function statusLabel(status) {
     <div>
         <div class="flex items-center justify-between gap-3">
             <h1 class="text-2xl font-bold">Employees</h1>
-            <Link v-if="canManage" href="/employees/create" class="flex min-h-11 items-center rounded bg-gray-900 px-4 font-medium text-white">
-                New employee
-            </Link>
+            <div v-if="canManage" class="flex gap-2">
+                <a :href="exportUrl" class="flex min-h-11 items-center rounded border border-gray-300 bg-white px-4 font-medium">Export CSV</a>
+                <Link href="/employees/create" class="flex min-h-11 items-center rounded bg-gray-900 px-4 font-medium text-white">
+                    New employee
+                </Link>
+            </div>
         </div>
 
         <p v-if="page.props.flash?.success" role="status" class="mt-3 rounded bg-green-50 p-3 text-green-900">
