@@ -123,6 +123,66 @@ class PurchaseOrderService
             return $this->changeStatus($order, PurchaseOrder::STATUS_CANCELLED);
         });
     }
+    // PRC-07 / PRC-12: the quantity received per order line, as exact decimals keyed by line id.
+    // Only POSTED receipts count: a draft receipt has not changed any stock. A line with no
+    // receipts is simply missing from the result.
+    public function receivedQuantities(PurchaseOrder $order): array
+    {
+        $rows = DB::table('goods_receipt_items')
+            ->join('goods_receipts', 'goods_receipts.id', '=', 'goods_receipt_items.goods_receipt_id')
+            ->where('goods_receipts.purchase_order_id', $order->id)
+            ->where('goods_receipts.status', 'posted')
+            ->groupBy('goods_receipt_items.purchase_order_item_id')
+            ->selectRaw('goods_receipt_items.purchase_order_item_id as item_id, SUM(goods_receipt_items.quantity_received) as received')
+            ->pluck('received', 'item_id');
+
+        $result = [];
+
+        foreach ($rows as $itemId => $sum) {
+            $result[(int) $itemId] = BigDecimal::of((string) $sum)->toScale(3);
+        }
+
+        return $result;
+    }
+
+    // PRC-09: after goods are received, the order is "partially_received" until every line is fully
+    // received, and then "received". GoodsReceiptService calls this inside its posting transaction.
+    // Only a placed order follows receipts: a draft or cancelled order is left alone.
+    public function refreshReceivingStatus(PurchaseOrder $order): PurchaseOrder
+    {
+        return DB::transaction(function () use ($order) {
+            $order = $this->lock($order);
+
+            $followsReceipts = [PurchaseOrder::STATUS_ORDERED, PurchaseOrder::STATUS_PARTIALLY_RECEIVED];
+
+            if (! in_array($order->status, $followsReceipts, true)) {
+                return $order;
+            }
+
+            $received = $this->receivedQuantities($order);
+            $everythingReceived = true;
+            $somethingReceived = false;
+
+            foreach ($order->items as $item) {
+                $already = $received[$item->id] ?? BigDecimal::zero()->toScale(3);
+
+                if ($already->isPositive()) {
+                    $somethingReceived = true;
+                }
+
+                if ($already->isLessThan(BigDecimal::of((string) $item->quantity))) {
+                    $everythingReceived = false;
+                }
+            }
+
+            $newStatus = $everythingReceived
+                ? PurchaseOrder::STATUS_RECEIVED
+                : ($somethingReceived ? PurchaseOrder::STATUS_PARTIALLY_RECEIVED : PurchaseOrder::STATUS_ORDERED);
+
+            // changeStatus writes the audit row, so the status change is logged like any other.
+            return $newStatus === $order->status ? $order : $this->changeStatus($order, $newStatus);
+        });
+    }
 
     // The one place where a status changes: update it, then write the audit row (AUD-02).
     private function changeStatus(PurchaseOrder $order, string $newStatus, array $extra = []): PurchaseOrder
