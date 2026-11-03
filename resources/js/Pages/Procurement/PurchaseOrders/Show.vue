@@ -17,6 +17,12 @@ const canManage = computed(() => page.props.auth?.permissions?.includes('purchas
 const isDraft = computed(() => props.order.status === 'draft');
 // A draft or an ordered order can be cancelled. The server also refuses once goods were received.
 const canCancel = computed(() => ['draft', 'ordered'].includes(props.order.status));
+// Receiving goods needs goods_receipts.manage (a different permission), and an order that is placed.
+const canReceive = computed(
+    () => page.props.auth?.permissions?.includes('goods_receipts.manage')
+        && ['ordered', 'partially_received'].includes(props.order.status),
+);
+const canSeeReceipts = computed(() => page.props.auth?.permissions?.includes('goods_receipts.manage'));
 
 // The server sends this message when it refuses (for example, "Goods have already been received ...").
 const statusError = computed(() => page.props.errors?.status ?? null);
@@ -77,7 +83,23 @@ function cancelOrder() {
                 Cancel order
             </button>
         </div>
-
+        <!-- Receiving goods: a separate permission from placing and cancelling orders -->
+        <div v-if="canReceive || canSeeReceipts" class="mt-2 flex flex-wrap gap-2">
+            <Link
+                v-if="canReceive"
+                :href="`/purchase-orders/${order.id}/receive`"
+                class="flex min-h-11 items-center rounded bg-gray-900 px-4 text-white"
+            >
+                Receive goods
+            </Link>
+            <Link
+                v-if="canSeeReceipts"
+                :href="`/goods-receipts?purchase_order_id=${order.id}`"
+                class="flex min-h-11 items-center rounded border px-4"
+            >
+                Receipts
+            </Link>
+        </div>
         <dl class="mt-6 grid gap-4 text-sm sm:grid-cols-3">
             <div>
                 <dt class="text-gray-500">Supplier</dt>

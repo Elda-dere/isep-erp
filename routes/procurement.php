@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Procurement\GoodsReceiptController;
 use App\Http\Controllers\Procurement\PurchaseOrderController;
 use App\Http\Controllers\Procurement\SupplierController;
 use Illuminate\Support\Facades\Route;
@@ -32,4 +33,19 @@ Route::middleware('permission:purchase_orders.manage')->group(function () {
     Route::put('/purchase-orders/{purchaseOrder}', [PurchaseOrderController::class, 'update'])->name('purchase_orders.update');
     Route::post('/purchase-orders/{purchaseOrder}/place', [PurchaseOrderController::class, 'place'])->name('purchase_orders.place');
     Route::post('/purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel'])->name('purchase_orders.cancel');
+});
+
+// Goods receipts. There is only one permission (goods_receipts.manage), so it guards the whole
+// receipts screen, the list included. A receipt is always created FROM an order, hence the order in the URL.
+Route::middleware('permission:goods_receipts.manage')->group(function () {
+    Route::get('/goods-receipts', [GoodsReceiptController::class, 'index'])->name('goods_receipts.index');
+    Route::get('/goods-receipts/{goodsReceipt}', [GoodsReceiptController::class, 'show'])
+        ->whereNumber('goodsReceipt')
+        ->name('goods_receipts.show');
+    Route::get('/purchase-orders/{purchaseOrder}/receive', [GoodsReceiptController::class, 'create'])->name('goods_receipts.create');
+    Route::post('/purchase-orders/{purchaseOrder}/goods-receipts', [GoodsReceiptController::class, 'store'])->name('goods_receipts.store');
+    Route::get('/goods-receipts/{goodsReceipt}/edit', [GoodsReceiptController::class, 'edit'])->name('goods_receipts.edit');
+    Route::put('/goods-receipts/{goodsReceipt}', [GoodsReceiptController::class, 'update'])->name('goods_receipts.update');
+    Route::post('/goods-receipts/{goodsReceipt}/post', [GoodsReceiptController::class, 'post'])->name('goods_receipts.post');
+    Route::post('/goods-receipts/{goodsReceipt}/cancel', [GoodsReceiptController::class, 'cancel'])->name('goods_receipts.cancel');
 });

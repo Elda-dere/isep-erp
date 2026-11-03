@@ -9,6 +9,7 @@ const props = defineProps({
 // The label is always written out: colour alone must never carry the meaning.
 const styles = {
     draft: ['Draft', 'bg-gray-200 text-gray-700'],
+    posted: ['Posted', 'bg-green-100 text-green-800'],
     ordered: ['Ordered', 'bg-blue-100 text-blue-800'],
     partially_received: ['Partially received', 'bg-amber-100 text-amber-800'],
     received: ['Received', 'bg-green-100 text-green-800'],
