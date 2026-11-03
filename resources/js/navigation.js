@@ -5,7 +5,12 @@
 //   { label: 'Employees', href: '/employees', permission: 'employees.view' },
 export const menu = [
     { label: 'Dashboard', href: '/dashboard' },
+< feature/attendance-summary
     { label: 'Attendance summary', href: '/attendance/summary', permission: 'attendance.view_all' },
+=======
+    { label: 'Attendance board', href: '/attendance/board', permission: 'attendance.view_all' },
+    { label: 'My attendance', href: '/my-attendance', permission: 'attendance.view_own' },
+ main
     { label: 'Scanner', href: '/scanner', permission: 'attendance.scan' },
     { label: 'Organisation', href: '/organisation', permission: 'employees.view' },
     { label: 'My QR', href: '/my-qr', permission: 'qr.own' },

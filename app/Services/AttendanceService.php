@@ -78,7 +78,7 @@ class AttendanceService
                     'attendance_date' => $today,
                     'check_in_at' => $now,
                     'check_out_at' => null,
-                    'status' => 'present',
+                    'status' => $this->statusFor($now),
                     'created_at' => $now,
                 ]);
 
@@ -105,6 +105,27 @@ class AttendanceService
 
             return $this->success('check_out', $employee, $now);
         });
+    }
+
+    /**
+     * "present", or "late" when the scan is after the start time plus the grace period (ATT-09).
+     * With no valid start time configured, nobody is ever late. The start time is read in business time.
+     */
+    public function statusFor(Carbon $at): string
+    {
+        $start = (string) config('attendance.start_time');
+
+        if (! preg_match('/^([01]?\d|2[0-3]):([0-5]\d)$/', $start, $parts)) {
+            return 'present';
+        }
+
+        $local = $at->copy()->setTimezone(config('erp.timezone'));
+
+        $deadline = $local->copy()
+            ->setTime((int) $parts[1], (int) $parts[2])
+            ->addMinutes(max(0, (int) config('attendance.grace_minutes', 0)));
+
+        return $local->gt($deadline) ? 'late' : 'present';
     }
 
     public function minimumGap(): int
