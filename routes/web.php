@@ -31,3 +31,4 @@ require __DIR__.'/networks.php';
 require __DIR__.'/attendance.php';
 require __DIR__.'/organisation-overview.php';
 require __DIR__.'/employee-export.php';
+require __DIR__.'/attendance-reports.php';
