@@ -5,6 +5,7 @@
 //   { label: 'Employees', href: '/employees', permission: 'employees.view' },
 export const menu = [
     { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Scanner', href: '/scanner', permission: 'attendance.scan' },
     { label: 'Organisation', href: '/organisation', permission: 'employees.view' },
     { label: 'My QR', href: '/my-qr', permission: 'qr.own' },
     { label: 'Networks', href: '/networks', permission: 'networks.manage' },
