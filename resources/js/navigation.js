@@ -26,4 +26,5 @@ export const menu = [
     { label: 'Suppliers', href: '/suppliers', permission: 'suppliers.manage' },
     { label: 'Purchase orders', href: '/purchase-orders', permission: 'purchase_orders.view' },
     { label: 'Goods receipts', href: '/goods-receipts', permission: 'goods_receipts.manage' },
+    { label: 'Customers', href: '/customers', permission: 'customers.manage' },
 ];
