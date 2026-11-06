@@ -17,4 +17,7 @@ return [
     */
     'timezone' => env('ERP_TIMEZONE', 'Africa/Addis_Ababa'),
 
+    // Password for the sample accounts of DemoSeeder (local development only).
+    'demo_password' => env('DEMO_PASSWORD'),
+
 ];
