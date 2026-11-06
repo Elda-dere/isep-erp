@@ -25,4 +25,15 @@ return [
     */
     'grace_minutes' => (int) env('ATTENDANCE_GRACE_MINUTES', 0),
 
+    /*
+    | Working days for the monthly summary, as ISO weekday numbers: 1 = Monday ... 7 = Sunday.
+    | Default Monday to Friday. There is no holiday list (SRS question Q04).
+    */
+    'working_days' => env('ATTENDANCE_WORKING_DAYS', '1,2,3,4,5'),
+
+    /*
+    | Used and expired QR codes older than this many days are deleted every night (ATT-15).
+    */
+    'qr_retention_days' => (int) env('QR_RETENTION_DAYS', 30),
+
 ];
