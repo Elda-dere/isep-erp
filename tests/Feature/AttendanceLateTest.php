@@ -29,7 +29,7 @@ class AttendanceLateTest extends TestCase
         $this->seed(RoleSeeder::class);
     }
 
-    private function status(string $utc): string
+    private function statusOf(string $utc): string
     {
         return app(AttendanceService::class)->statusFor(Carbon::parse($utc, 'UTC'));
     }
@@ -66,11 +66,11 @@ class AttendanceLateTest extends TestCase
     {
         config(['attendance.start_time' => null, 'attendance.grace_minutes' => 0]);
 
-        $this->assertSame('present', $this->status('2026-10-30 20:00:00'));
+        $this->assertSame('present', $this->statusOf('2026-10-30 20:00:00'));
 
         config(['attendance.start_time' => '']);
 
-        $this->assertSame('present', $this->status('2026-10-30 20:00:00'));
+        $this->assertSame('present', $this->statusOf('2026-10-30 20:00:00'));
     }
 
     public function test_a_person_is_on_time_until_the_grace_period_has_passed(): void
@@ -78,19 +78,19 @@ class AttendanceLateTest extends TestCase
         // The start time 09:00 is business time: 06:00 UTC.
         config(['attendance.start_time' => '09:00', 'attendance.grace_minutes' => 10]);
 
-        $this->assertSame('present', $this->status('2026-10-30 05:00:00'));
-        $this->assertSame('present', $this->status('2026-10-30 06:00:00'));
-        $this->assertSame('present', $this->status('2026-10-30 06:10:00'));
-        $this->assertSame('late', $this->status('2026-10-30 06:10:01'));
-        $this->assertSame('late', $this->status('2026-10-30 09:00:00'));
+        $this->assertSame('present', $this->statusOf('2026-10-30 05:00:00'));
+        $this->assertSame('present', $this->statusOf('2026-10-30 06:00:00'));
+        $this->assertSame('present', $this->statusOf('2026-10-30 06:10:00'));
+        $this->assertSame('late', $this->statusOf('2026-10-30 06:10:01'));
+        $this->assertSame('late', $this->statusOf('2026-10-30 09:00:00'));
     }
 
     public function test_without_a_grace_period_the_start_time_itself_is_the_deadline(): void
     {
         config(['attendance.start_time' => '09:00', 'attendance.grace_minutes' => 0]);
 
-        $this->assertSame('present', $this->status('2026-10-30 06:00:00'));
-        $this->assertSame('late', $this->status('2026-10-30 06:00:01'));
+        $this->assertSame('present', $this->statusOf('2026-10-30 06:00:00'));
+        $this->assertSame('late', $this->statusOf('2026-10-30 06:00:01'));
     }
 
     public function test_the_start_time_is_read_in_business_time_not_utc(): void
@@ -98,8 +98,8 @@ class AttendanceLateTest extends TestCase
         config(['attendance.start_time' => '09:00', 'attendance.grace_minutes' => 0]);
 
         // 08:59:59 in Addis Ababa is on time. 12:00 in Addis Ababa (09:00 UTC) is late.
-        $this->assertSame('present', $this->status('2026-10-30 05:59:59'));
-        $this->assertSame('late', $this->status('2026-10-30 09:00:00'));
+        $this->assertSame('present', $this->statusOf('2026-10-30 05:59:59'));
+        $this->assertSame('late', $this->statusOf('2026-10-30 09:00:00'));
     }
 
     public function test_a_badly_written_start_time_switches_lateness_off(): void
@@ -107,7 +107,7 @@ class AttendanceLateTest extends TestCase
         foreach (['9am', '25:00', '09:60', 'late', '9'] as $value) {
             config(['attendance.start_time' => $value, 'attendance.grace_minutes' => 0]);
 
-            $this->assertSame('present', $this->status('2026-10-30 20:00:00'), "Start time '{$value}' should be ignored");
+            $this->assertSame('present', $this->statusOf('2026-10-30 20:00:00'), "Start time '{$value}' should be ignored");
         }
     }
 
