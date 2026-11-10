@@ -14,6 +14,8 @@ const styles = {
     partially_received: ['Partially received', 'bg-amber-100 text-amber-800'],
     received: ['Received', 'bg-green-100 text-green-800'],
     cancelled: ['Cancelled', 'bg-red-100 text-red-800'],
+    pending: ['Pending payment', 'bg-amber-100 text-amber-800'],
+    paid: ['Paid', 'bg-green-100 text-green-800'],
 };
 
 const label = computed(() => styles[props.status]?.[0] ?? props.status);
