@@ -11,13 +11,15 @@ use App\Support\DocumentNumber;
 use Brick\Math\BigDecimal;
 use Brick\Math\Exception\MathException;
 use Brick\Math\RoundingMode;
+use Carbon\CarbonInterface;
 use DomainException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use Throwable;
 
 /**
- * Owns creating and cancelling sales.
+ * Owns creating, cancelling and expiring sales.
  *
  * Stock changes go ONLY through StockService. Marking a sale as paid will belong to PaymentService
  * (the payments slice), so there is deliberately no "markPaid" here yet.
@@ -124,20 +126,7 @@ class SaleService
                 throw new DomainException('This sale is already cancelled.');
             }
 
-            // Product order, the same order used when the stock was taken out, so two cancellations
-            // never wait for each other's stock rows in opposite orders (no deadlock).
-            $items = $sale->items()->reorder()->orderBy('product_id')->orderBy('warehouse_id')->orderBy('id')->get();
-
-            foreach ($items as $item) {
-                // Passing the sale line's id lets StockService refuse to reverse the same line twice.
-                $this->stock->reverse(
-                    (int) $item->product_id,
-                    (int) $item->warehouse_id,
-                    (string) $item->quantity,
-                    $userId,
-                    (int) $item->id,
-                );
-            }
+            $this->restoreStock($sale, $userId);
 
             $sale->update(['status' => Sale::STATUS_CANCELLED]);
 
@@ -151,6 +140,86 @@ class SaleService
 
             return $sale;
         }, self::TRANSACTION_ATTEMPTS);
+    }
+
+    // SAL-08: cancels every PENDING sale that has been unpaid for the configured time (default 30
+    // minutes) and puts its stock back. Called by the "sales:expire" command every 5 minutes.
+    // Returns how many sales expired.
+    public function expireStale(): int
+    {
+        $minutes = max(1, (int) config('sales.pending_expiry_minutes', 30));
+        $cutoff = now()->subMinutes($minutes);
+
+        // Only the ids first: each sale is then handled in its OWN transaction, so one failing
+        // sale never blocks (or undoes) the others.
+        $ids = Sale::where('status', Sale::STATUS_PENDING)
+            ->where('created_at', '<=', $cutoff)
+            ->orderBy('id')
+            ->pluck('id');
+
+        $expired = 0;
+
+        foreach ($ids as $id) {
+            try {
+                if ($this->expire((int) $id, $cutoff)) {
+                    $expired++;
+                }
+            } catch (Throwable $e) {
+                report($e); // logged, and the next sale is still handled
+            }
+        }
+
+        return $expired;
+    }
+
+    // Expires ONE sale. Returns false if it is no longer expirable.
+    private function expire(int $saleId, CarbonInterface $cutoff): bool
+    {
+        return DB::transaction(function () use ($saleId, $cutoff) {
+            $sale = Sale::whereKey($saleId)->lockForUpdate()->first();
+
+            // Check again under the lock: a payment (or a cashier) may have changed the sale since
+            // the list was read.
+            if (! $sale || $sale->status !== Sale::STATUS_PENDING || $sale->created_at->gt($cutoff)) {
+                return false;
+            }
+
+            // No person is acting here. The stock card records the sale's creator, with a note that says
+            // this was automatic; the audit row has NO user, as the SRS asks for system actions (AUD-03).
+            $this->restoreStock($sale, (int) $sale->created_by, 'Automatic: the sale expired unpaid');
+
+            $sale->update(['status' => Sale::STATUS_CANCELLED]);
+
+            AuditLogger::log(
+                'sale.expired',
+                'sale',
+                $sale->id,
+                ['status' => Sale::STATUS_PENDING],
+                ['status' => Sale::STATUS_CANCELLED, 'reason' => 'unpaid after ' . config('sales.pending_expiry_minutes', 30) . ' minutes'],
+            );
+
+            return true;
+        }, self::TRANSACTION_ATTEMPTS);
+    }
+
+    // Gives the stock of every line back through StockService (one sale_reversal movement per line).
+    // Product order, the same order used when the stock was taken out, so two cancellations never
+    // wait for each other's stock rows in opposite orders (no deadlock).
+    private function restoreStock(Sale $sale, int $userId, ?string $note = null): void
+    {
+        $items = $sale->items()->reorder()->orderBy('product_id')->orderBy('warehouse_id')->orderBy('id')->get();
+
+        foreach ($items as $item) {
+            // Passing the sale line's id lets StockService refuse to reverse the same line twice.
+            $this->stock->reverse(
+                (int) $item->product_id,
+                (int) $item->warehouse_id,
+                (string) $item->quantity,
+                $userId,
+                (int) $item->id,
+                $note,
+            );
+        }
     }
 
     // Creates the sale row with the next number for TODAY (Addis Ababa day): SAL-20261108-0001.

@@ -21,10 +21,17 @@ Route::middleware('permission:sales.create')->group(function () {
     Route::post('/sales', [SaleController::class, 'store'])->name('sales.store');
 });
 
-// Looking at a sale needs sales.view. whereNumber() makes sure "create" is never read as a sale id.
-// Part 3 adds the list here, and the Cancel action under sales.cancel.
+// Looking at sales needs sales.view. whereNumber() makes sure "create" is never read as a sale id.
 Route::middleware('permission:sales.view')->group(function () {
+    Route::get('/sales', [SaleController::class, 'index'])->name('sales.index');
     Route::get('/sales/{sale}', [SaleController::class, 'show'])
         ->whereNumber('sale')
         ->name('sales.show');
+});
+
+// Cancelling needs its own permission, sales.cancel.
+Route::middleware('permission:sales.cancel')->group(function () {
+    Route::post('/sales/{sale}/cancel', [SaleController::class, 'cancel'])
+        ->whereNumber('sale')
+        ->name('sales.cancel');
 });

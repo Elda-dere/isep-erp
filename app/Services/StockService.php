@@ -60,15 +60,16 @@ class StockService
         }, self::ATTEMPTS);
     }
 
-    public function reverse(int $productId, int $warehouseId, string|int $quantity, int $userId, ?int $saleItemId = null): StockMovement
+    public function reverse(int $productId, int $warehouseId, string|int $quantity, int $userId, ?int $saleItemId = null, ?string $note = null): StockMovement
     {
         $qty = $this->positive($quantity);
 
-        return DB::transaction(function () use ($productId, $warehouseId, $qty, $userId, $saleItemId) {
+        return DB::transaction(function () use ($productId, $warehouseId, $qty, $userId, $saleItemId, $note) {
             $this->lockStock($productId, $warehouseId);
             $this->assertNotRecorded(StockMovement::TYPE_SALE_REVERSAL, 'sale_item_id', $saleItemId, 'This sale line was already reversed.');
 
-            return $this->apply($productId, $warehouseId, $qty, StockMovement::TYPE_SALE_REVERSAL, $userId, null, null, $saleItemId);
+            // The optional note says WHY (for example, an automatic cancellation) on the stock card.
+            return $this->apply($productId, $warehouseId, $qty, StockMovement::TYPE_SALE_REVERSAL, $userId, $note, null, $saleItemId);
         }, self::ATTEMPTS);
     }
 
