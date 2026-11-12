@@ -13,6 +13,7 @@ return [
     'mode' => env('CHAPA_MODE', 'test'),
 
     'timeout_seconds' => 15,
+    'reconcile_after_minutes' => 10, // PAY-13: payments still pending after this long are verified by the scheduler
     'retry_delays_ms' => [500, 1500], // retried at most twice, with back-off (SRS 6.2)
 
     // The webhook itself is set in the Chapa dashboard. A callback is only sent if you configure one.

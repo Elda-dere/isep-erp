@@ -10,6 +10,9 @@ use Brick\Math\Exception\MathException;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Exceptions\ChapaException;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Owns every payment status change and the moment a sale becomes paid. Controllers never change them.
@@ -88,7 +91,60 @@ class PaymentService
             return $payment->fresh();
         }, self::TRANSACTION_ATTEMPTS);
     }
+    // PAY-13: runs every 5 minutes. Asks Chapa about payments still pending after 10 minutes (to recover
+    // from missed webhooks), and about pending payments of CANCELLED sales, which become "expired" if unpaid.
+    public function reconcile(): array
+    {
+        $cutoff = now()->subMinutes(max(1, (int) config('chapa.reconcile_after_minutes', 10)));
 
+        $ids = Payment::where('status', Payment::STATUS_PENDING)
+            ->where(fn ($query) => $query
+                ->where('created_at', '<=', $cutoff)
+                ->orWhereIn('sale_id', Sale::select('id')->where('status', Sale::STATUS_CANCELLED)))
+            ->orderBy('id')
+            ->pluck('id');
+
+        $checked = 0;
+        $expired = 0;
+
+        foreach ($ids as $id) {
+            try {
+                // Ask Chapa FIRST: a customer may have paid just before the sale expired.
+                $payment = $this->verify(Payment::findOrFail($id));
+                $checked++;
+
+                if ($payment->status === Payment::STATUS_PENDING && $this->expireIfSaleCancelled($payment)) {
+                    $expired++;
+                }
+            } catch (ChapaException $e) {
+                // Skipped; the next run tries again. The message never contains a secret.
+                Log::warning("Payment {$id} skipped by the reconciliation job: {$e->getMessage()}");
+            } catch (Throwable $e) {
+                report($e); // one broken payment must never stop the others
+            }
+        }
+
+        return ['checked' => $checked, 'expired' => $expired];
+    }
+
+    // A pending payment whose sale was cancelled (for example, expired unpaid) becomes "expired".
+    private function expireIfSaleCancelled(Payment $payment): bool
+    {
+        return DB::transaction(function () use ($payment) {
+            // Same lock order as everywhere: the sale first, then the payment.
+            $sale = Sale::whereKey($payment->sale_id)->lockForUpdate()->firstOrFail();
+            $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
+
+            if ($payment->status !== Payment::STATUS_PENDING || $sale->status !== Sale::STATUS_CANCELLED) {
+                return false;
+            }
+
+            $this->recordEvent($payment, 'expired', ['reason' => 'The sale was cancelled while the payment was still pending.']);
+            $this->changeStatus($payment, Payment::STATUS_EXPIRED);
+
+            return true;
+        }, self::TRANSACTION_ATTEMPTS);
+    }
     private function assertPayable(Sale $sale): void
     {
         if ($sale->status !== Sale::STATUS_PENDING) {

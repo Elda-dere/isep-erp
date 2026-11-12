@@ -15,3 +15,5 @@ Artisan::command('inspire', function () {
     ->withoutOverlapping();
 // SAL-08: cancel pending sales that were not paid in time (default 30 minutes) and give their stock back.
 Schedule::command('sales:expire')->everyFiveMinutes()->withoutOverlapping();
+// PAY-13: verify payments still pending after 10 minutes, and expire those of cancelled sales.
+Schedule::command('payments:reconcile')->everyFiveMinutes()->withoutOverlapping();
