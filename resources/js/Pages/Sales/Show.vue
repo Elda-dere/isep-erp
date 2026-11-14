@@ -1,4 +1,5 @@
 <script setup>
+import SalePayments from '../../Components/SalePayments.vue';
 import { computed } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import FlashMessage from '../../Components/FlashMessage.vue';
@@ -7,6 +8,7 @@ import { formatDateTime, formatMoney } from '../../format.js';
 
 const props = defineProps({
     sale: Object, // the sale with its lines; quantities and money are exact strings
+    payments: Array, // its payment attempts
 });
 
 const page = usePage();
@@ -77,7 +79,7 @@ function cancelSale() {
                 <dd class="text-lg font-semibold">{{ formatMoney(sale.total_amount, sale.currency) }}</dd>
             </div>
         </dl>
-
+        <SalePayments :sale="sale" :payments="payments" />
         <h2 class="mt-8 text-lg font-semibold">Lines</h2>
 
         <!-- Table: from 640 px upward -->

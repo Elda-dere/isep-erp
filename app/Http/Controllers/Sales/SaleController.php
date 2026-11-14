@@ -19,6 +19,7 @@ use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use InvalidArgumentException;
+use App\Models\Payment;
 
 class SaleController extends Controller
 {
@@ -137,6 +138,16 @@ class SaleController extends Controller
         $sale->load(['customer', 'creator', 'items.product.unit', 'items.warehouse']);
 
         return Inertia::render('Sales/Show', [
+                 'payments' => $sale->payments()->orderByDesc('id')->get()->map(fn (Payment $payment) => [
+                'id' => $payment->id,
+                'status' => $payment->status,
+                'amount' => (string) $payment->amount,
+                'currency' => $payment->currency,
+                'created_at' => $payment->created_at?->toIso8601String(),
+                'paid_at' => $payment->paid_at?->toIso8601String(),
+                // The link is only useful (and only shown) while the payment can still be paid.
+                'checkout_url' => $payment->status === Payment::STATUS_PENDING ? $payment->checkout_url : null,
+            ])->all(),
             'sale' => [
                 'id' => $sale->id,
                 'sale_number' => $sale->sale_number,

@@ -45,6 +45,11 @@ class Sale extends Model
     {
         return $this->hasMany(SaleItem::class)->orderBy('id');
     }
+        // A sale can have several payment attempts (a retry creates a new one).
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
 
     // DR-05: the sum of the line totals, as an exact decimal string like "25.01".
     // sales.total_amount must always equal this. Tests (and a future integrity report) compare the two.
