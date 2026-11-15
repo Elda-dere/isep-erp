@@ -352,7 +352,7 @@ onUnmounted(() => {
 
                                     <!-- Icon -->
                                     <NavIcon
-                                        :name="item.icon"
+                                        :name="item.icon ?? ''"
                                         :class-name="[
                                             'transition-colors',
                                             isActive(item.href) ? 'text-forest' : 'text-ink-muted group-hover:text-ink',
@@ -593,7 +593,7 @@ onUnmounted(() => {
                                             @click="closeMobile"
                                         >
                                             <NavIcon
-                                                :name="item.icon"
+                                                :name="item.icon ?? ''"
                                                 :class-name="[
                                                     'h-4 w-4 shrink-0',
                                                     isActive(item.href) ? 'text-forest' : 'text-ink-muted',
