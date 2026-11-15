@@ -1,9 +1,17 @@
 <script setup>
 import { computed } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
+import AppButton from '../../../Components/AppButton.vue';
+import Card from '../../../Components/Card.vue';
+import FormField from '../../../Components/FormField.vue';
+import PageHeader from '../../../Components/PageHeader.vue';
+import TextInput from '../../../Components/TextInput.vue';
 
 const props = defineProps({
-    unit: Object, // null when creating, the unit when editing
+    unit: {
+        type: Object,
+        default: null,
+    },
 });
 
 const isEdit = computed(() => props.unit !== null);
@@ -13,7 +21,6 @@ const form = useForm({
     symbol: props.unit?.symbol ?? '',
 });
 
-// Edit sends PUT /units/{id}; create sends POST /units.
 function submit() {
     if (isEdit.value) {
         form.put(`/units/${props.unit.id}`);
@@ -26,32 +33,72 @@ function submit() {
 <template>
     <Head :title="isEdit ? 'Edit unit' : 'New unit'" />
 
-    <div class="max-w-xl">
-        <h1 class="text-2xl font-semibold">{{ isEdit ? 'Edit unit' : 'New unit' }}</h1>
+    <div class="max-w-2xl space-y-6">
+        <PageHeader
+            :title="isEdit ? 'Edit unit' : 'New unit'"
+            :subtitle="isEdit ? 'Update unit name and symbol.' : 'Add a new unit of measure for tracking item quantities.'"
+            back-href="/units"
+            back-label="Units"
+        />
 
-        <form class="mt-6 space-y-4" @submit.prevent="submit">
-            <div>
-                <label for="name" class="block text-sm font-medium">Name</label>
-                <input id="name" v-model="form.name" type="text" maxlength="50" placeholder="For example: Kilogram" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                <p v-if="form.errors.name" class="mt-1 text-sm text-red-700">{{ form.errors.name }}</p>
-            </div>
-
-            <div>
-                <label for="symbol" class="block text-sm font-medium">Symbol</label>
-                <input id="symbol" v-model="form.symbol" type="text" maxlength="20" placeholder="For example: kg" class="mt-1 h-11 w-full rounded border border-gray-300 px-3 font-mono" />
-                <p v-if="form.errors.symbol" class="mt-1 text-sm text-red-700">{{ form.errors.symbol }}</p>
-            </div>
-
-            <div class="flex gap-3">
-                <button
-                    type="submit"
-                    :disabled="form.processing"
-                    class="flex min-h-11 items-center rounded bg-gray-900 px-5 text-white disabled:opacity-50"
+        <Card padding="md">
+            <form class="space-y-5" @submit.prevent="submit">
+                <FormField
+                    for-id="unit_name"
+                    label="Unit name"
+                    required
+                    :error="form.errors.name"
                 >
-                    {{ form.processing ? 'Saving…' : 'Save' }}
-                </button>
-                <Link href="/units" class="flex min-h-11 items-center rounded border px-5">Cancel</Link>
-            </div>
-        </form>
+                    <TextInput
+                        id="unit_name"
+                        v-model="form.name"
+                        type="text"
+                        maxlength="50"
+                        placeholder="e.g. Kilogram"
+                        autocomplete="off"
+                        :disabled="form.processing"
+                        autofocus
+                    />
+                </FormField>
+
+                <FormField
+                    for-id="unit_symbol"
+                    label="Symbol"
+                    required
+                    hint="Short abbreviation used on stock cards, inventory reports, and receipts"
+                    :error="form.errors.symbol"
+                >
+                    <TextInput
+                        id="unit_symbol"
+                        v-model="form.symbol"
+                        type="text"
+                        maxlength="20"
+                        placeholder="e.g. kg"
+                        autocomplete="off"
+                        :mono="true"
+                        :disabled="form.processing"
+                    />
+                </FormField>
+
+                <div class="flex flex-wrap items-center gap-3 pt-2">
+                    <AppButton
+                        type="submit"
+                        variant="primary"
+                        :loading="form.processing"
+                        :disabled="form.processing"
+                    >
+                        {{ form.processing ? 'Saving…' : (isEdit ? 'Save changes' : 'Create unit') }}
+                    </AppButton>
+
+                    <AppButton
+                        variant="secondary"
+                        href="/units"
+                        :disabled="form.processing"
+                    >
+                        Cancel
+                    </AppButton>
+                </div>
+            </form>
+        </Card>
     </div>
 </template>
