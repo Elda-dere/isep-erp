@@ -1,9 +1,17 @@
 <script setup>
 import { computed } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
+import AppButton from '../../../Components/AppButton.vue';
+import Card from '../../../Components/Card.vue';
+import FormField from '../../../Components/FormField.vue';
+import PageHeader from '../../../Components/PageHeader.vue';
+import TextInput from '../../../Components/TextInput.vue';
 
 const props = defineProps({
-    customer: Object, // null when creating, the customer when editing
+    customer: {
+        type: Object, // null when creating, the customer when editing
+        default: null,
+    },
 });
 
 const isEdit = computed(() => props.customer !== null);
@@ -30,55 +38,111 @@ function submit() {
 <template>
     <Head :title="isEdit ? 'Edit customer' : 'New customer'" />
 
-    <div class="max-w-xl">
-        <h1 class="text-2xl font-semibold">{{ isEdit ? 'Edit customer' : 'New customer' }}</h1>
+    <div class="max-w-2xl space-y-6">
+        <PageHeader
+            :title="isEdit ? 'Edit customer' : 'New customer'"
+            :subtitle="isEdit ? `Update contact and account details for ${customer.name}.` : 'Add a new customer to the commercial customer directory.'"
+            back-href="/customers"
+            back-label="Customers"
+        />
 
-        <form class="mt-6 space-y-4" @submit.prevent="submit">
-            <div>
-                <label for="name" class="block text-sm font-medium">Name</label>
-                <input
-                    id="name"
-                    v-model="form.name"
-                    type="text"
-                    maxlength="180"
-                    :disabled="isWalkIn"
-                    class="mt-1 h-11 w-full rounded border border-gray-300 px-3 disabled:bg-gray-100"
-                />
-                <p v-if="isWalkIn" class="mt-1 text-xs text-gray-500">
-                    This is the default customer for anonymous sales, so its name cannot be changed.
-                </p>
-                <p v-if="form.errors.name" class="mt-1 text-sm text-red-700" role="alert">{{ form.errors.name }}</p>
-            </div>
-
-            <!-- type="tel" shows the telephone keyboard on phones (NFR-MOB-02) -->
-            <div>
-                <label for="phone" class="block text-sm font-medium">Phone (optional)</label>
-                <input id="phone" v-model="form.phone" type="tel" maxlength="30" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                <p v-if="form.errors.phone" class="mt-1 text-sm text-red-700">{{ form.errors.phone }}</p>
-            </div>
-
-            <div>
-                <label for="email" class="block text-sm font-medium">Email (optional)</label>
-                <input id="email" v-model="form.email" type="email" maxlength="190" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                <p v-if="form.errors.email" class="mt-1 text-sm text-red-700">{{ form.errors.email }}</p>
-            </div>
-
-            <div>
-                <label for="address" class="block text-sm font-medium">Address (optional)</label>
-                <textarea id="address" v-model="form.address" rows="3" class="mt-1 w-full rounded border border-gray-300 px-3 py-2"></textarea>
-                <p v-if="form.errors.address" class="mt-1 text-sm text-red-700">{{ form.errors.address }}</p>
-            </div>
-
-            <div class="flex gap-3">
-                <button
-                    type="submit"
-                    :disabled="form.processing"
-                    class="flex min-h-11 items-center rounded bg-gray-900 px-5 text-white disabled:opacity-50"
+        <Card padding="md">
+            <form class="space-y-5" @submit.prevent="submit">
+                <FormField
+                    for-id="name"
+                    label="Customer name"
+                    required
+                    :error="form.errors.name"
                 >
-                    {{ form.processing ? 'Saving…' : 'Save' }}
-                </button>
-                <Link href="/customers" class="flex min-h-11 items-center rounded border px-5">Cancel</Link>
-            </div>
-        </form>
+                    <TextInput
+                        id="name"
+                        v-model="form.name"
+                        type="text"
+                        maxlength="180"
+                        placeholder="e.g. Abebe Kebede"
+                        autocomplete="off"
+                        :disabled="isWalkIn || form.processing"
+                        :autofocus="!isWalkIn"
+                    />
+                    <p
+                        v-if="isWalkIn"
+                        class="mt-1.5 text-xs text-ink-muted"
+                    >
+                        This is the default customer for anonymous sales, so its name cannot be changed.
+                    </p>
+                </FormField>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                        for-id="phone"
+                        label="Phone"
+                        hint="Optional (max 30 chars)"
+                        :error="form.errors.phone"
+                    >
+                        <TextInput
+                            id="phone"
+                            v-model="form.phone"
+                            type="tel"
+                            maxlength="30"
+                            placeholder="e.g. 0911000111"
+                            autocomplete="tel"
+                            :disabled="form.processing"
+                        />
+                    </FormField>
+
+                    <FormField
+                        for-id="email"
+                        label="Email"
+                        hint="Optional (max 190 chars)"
+                        :error="form.errors.email"
+                    >
+                        <TextInput
+                            id="email"
+                            v-model="form.email"
+                            type="email"
+                            maxlength="190"
+                            placeholder="e.g. customer@example.com"
+                            autocomplete="email"
+                            :disabled="form.processing"
+                        />
+                    </FormField>
+                </div>
+
+                <FormField
+                    for-id="address"
+                    label="Address"
+                    hint="Optional billing address or delivery location"
+                    :error="form.errors.address"
+                >
+                    <textarea
+                        id="address"
+                        v-model="form.address"
+                        rows="3"
+                        placeholder="e.g. Bole Subcity, Kebele 03, Addis Ababa"
+                        :disabled="form.processing"
+                        class="block w-full rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint shadow-2xs transition-colors focus:border-forest focus:outline-none focus:ring-1 focus:ring-forest disabled:bg-stone disabled:opacity-75"
+                    />
+                </FormField>
+
+                <div class="flex flex-wrap items-center gap-3 pt-2">
+                    <AppButton
+                        type="submit"
+                        variant="primary"
+                        :loading="form.processing"
+                        :disabled="form.processing"
+                    >
+                        {{ form.processing ? 'Saving…' : (isEdit ? 'Save changes' : 'Create customer') }}
+                    </AppButton>
+
+                    <AppButton
+                        variant="secondary"
+                        href="/customers"
+                        :disabled="form.processing"
+                    >
+                        Cancel
+                    </AppButton>
+                </div>
+            </form>
+        </Card>
     </div>
 </template>

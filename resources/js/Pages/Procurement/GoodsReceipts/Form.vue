@@ -1,19 +1,33 @@
 <script setup>
 import { computed } from 'vue';
-import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm } from '@inertiajs/vue3';
+import AppButton from '../../../Components/AppButton.vue';
+import Card from '../../../Components/Card.vue';
+import ErrorAlert from '../../../Components/ErrorAlert.vue';
+import FormField from '../../../Components/FormField.vue';
+import PageHeader from '../../../Components/PageHeader.vue';
+import TextInput from '../../../Components/TextInput.vue';
 
 const props = defineProps({
-    order: Object, // id, order_number, supplier
-    receipt: Object, // null when creating, the draft when editing
-    lines: Array, // every order line, with ordered / received / outstanding / quantity
+    order: {
+        type: Object, // id, order_number, supplier
+        required: true,
+    },
+    receipt: {
+        type: Object, // null when creating, draft when editing
+        default: null,
+    },
+    lines: {
+        type: Array, // every order line, with ordered / received / outstanding / quantity
+        required: true,
+    },
 });
 
 const isEdit = computed(() => props.receipt !== null);
 
-// useForm keeps the values, sends them, and remembers the server's validation errors.
-// ALL lines are sent, in the order shown, so "line 2" in an error message is the second card.
-// The server ignores lines whose quantity is blank or zero.
-// Quantities stay as TEXT ("4.500"): this keeps the decimals exact.
+// useForm keeps values, sends them, and remembers server validation errors.
+// ALL lines are sent in the exact order shown so "line 2" in validation matches the second card.
+// Quantities stay as TEXT ("4.500") to eliminate floating-point error.
 const form = useForm({
     lines: props.lines.map((line) => ({
         purchase_order_item_id: line.purchase_order_item_id,
@@ -21,12 +35,11 @@ const form = useForm({
     })),
 });
 
-// Nothing is left to receive on this line (the server sends exact strings like "0.000").
+// The server sends exact strings like "0.000" for completed lines
 function isComplete(line) {
     return line.outstanding === '0.000';
 }
 
-// Edit sends PUT /goods-receipts/{id}; create sends POST /purchase-orders/{id}/goods-receipts.
 function submit() {
     if (isEdit.value) {
         form.put(`/goods-receipts/${props.receipt.id}`);
@@ -43,63 +56,115 @@ function cancel() {
 <template>
     <Head :title="isEdit ? `Edit ${receipt.receipt_number}` : `Receive goods: ${order.order_number}`" />
 
-    <div class="max-w-3xl">
-        <h1 class="text-2xl font-semibold">
-            {{ isEdit ? `Edit draft ${receipt.receipt_number}` : 'Receive goods' }}
-        </h1>
-        <p class="mt-1 text-sm text-gray-600">
-            Order <span class="font-mono">{{ order.order_number }}</span> · {{ order.supplier }}
-        </p>
-        <p class="mt-1 text-sm text-gray-500">
-            Enter what really arrived. Leave a line blank (or 0) if nothing arrived. This only saves a draft:
-            the stock changes when you post the receipt.
-        </p>
+    <div class="max-w-3xl space-y-6">
+        <PageHeader
+            :title="isEdit ? `Edit draft ${receipt.receipt_number}` : 'Receive goods'"
+            :subtitle="`Order ${order.order_number} · ${order.supplier}`"
+            :back-href="isEdit ? `/goods-receipts/${receipt.id}` : `/purchase-orders/${order.id}`"
+            :back-label="isEdit ? 'Goods receipt' : 'Purchase order'"
+            :mono-title="isEdit"
+        />
 
-        <form class="mt-6 space-y-4" @submit.prevent="submit">
-            <!-- Messages from the server that belong to the lines as a whole,
-                 for example "only 4.000 is still outstanding" -->
-            <p v-if="form.errors.lines" role="alert" class="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-                {{ form.errors.lines }}
+        <!-- Instructional Card -->
+        <Card padding="md">
+            <p class="text-sm text-ink-muted">
+                Enter what physically arrived in this shipment. Leave a line blank (or 0) if nothing arrived. This action only saves a draft receipt; warehouse stock updates when you subsequently post the receipt.
             </p>
+        </Card>
 
-            <div v-for="(line, index) in lines" :key="line.purchase_order_item_id" class="rounded border bg-white p-3">
-                <p class="font-mono text-xs text-gray-500">{{ line.product.sku }}</p>
-                <p class="font-medium">{{ line.product.name }}</p>
-                <p class="mt-1 text-sm text-gray-600">
-                    Ordered {{ line.ordered }} · received {{ line.received }} ·
-                    <span class="font-medium">outstanding {{ line.outstanding }}</span> {{ line.product.unit }}
-                </p>
+        <form class="space-y-6" @submit.prevent="submit">
+            <!-- Global lines error banner -->
+            <ErrorAlert
+                v-if="form.errors.lines"
+                :message="form.errors.lines"
+                title="Invalid receipt lines"
+            />
 
-                <div class="mt-3 max-w-xs">
-                    <label :for="`quantity-${index}`" class="block text-sm font-medium">Quantity received now</label>
-                    <p v-if="isComplete(line)" class="mt-1 flex h-11 items-center text-sm text-gray-500">Fully received</p>
-                    <!-- inputmode="decimal" shows the number keyboard on phones. Use a dot: 2.5 -->
-                    <input
-                        v-else
-                        :id="`quantity-${index}`"
-                        v-model="form.lines[index].quantity"
-                        type="text"
-                        inputmode="decimal"
-                        class="mt-1 h-11 w-full rounded border border-gray-300 px-3"
-                    />
-                    <p v-if="form.errors[`lines.${index}.quantity`]" class="mt-1 text-sm text-red-700" role="alert">
-                        {{ form.errors[`lines.${index}.quantity`] }}
-                    </p>
-                    <p v-if="form.errors[`lines.${index}.purchase_order_item_id`]" class="mt-1 text-sm text-red-700" role="alert">
-                        {{ form.errors[`lines.${index}.purchase_order_item_id`] }}
-                    </p>
+            <!-- Line Items Stack -->
+            <Card padding="md">
+                <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+                    <h2 class="text-base font-semibold text-ink">Purchase Order Items</h2>
+                    <span class="font-mono text-xs text-ink-muted tabular-nums">
+                        {{ lines.length }} {{ lines.length === 1 ? 'item' : 'items' }}
+                    </span>
                 </div>
-            </div>
 
-            <div class="flex gap-3">
-                <button
+                <div class="mt-4 space-y-4">
+                    <div
+                        v-for="(line, index) in lines"
+                        :key="line.purchase_order_item_id"
+                        class="rounded border border-border-subtle bg-stone/40 p-4"
+                    >
+                        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                            <div>
+                                <span class="font-mono text-xs text-ink-muted">{{ line.product.sku }}</span>
+                                <p class="text-base font-semibold text-ink">{{ line.product.name }}</p>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-2 text-xs font-mono tabular-nums">
+                                <span class="rounded bg-stone px-2 py-0.5 text-ink-muted border border-border">
+                                    Ordered: {{ line.ordered }}
+                                </span>
+                                <span class="rounded bg-stone px-2 py-0.5 text-ink-muted border border-border">
+                                    Received: {{ line.received }}
+                                </span>
+                                <span
+                                    class="rounded px-2 py-0.5 font-medium border"
+                                    :class="isComplete(line) ? 'bg-soft-green text-forest border-forest/20' : 'bg-amber-50 text-amber-800 border-amber-200'"
+                                >
+                                    Outstanding: {{ line.outstanding }} {{ line.product.unit || '' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 max-w-xs">
+                            <FormField
+                                :for-id="`quantity-${index}`"
+                                label="Quantity received now"
+                                hint="Decimal up to 3 places"
+                                :error="form.errors[`lines.${index}.quantity`] || form.errors[`lines.${index}.purchase_order_item_id`]"
+                            >
+                                <div v-if="isComplete(line)" class="flex min-h-11 items-center">
+                                    <span class="inline-flex items-center rounded-sm bg-soft-green px-2.5 py-1 text-xs font-medium text-forest border border-forest/20">
+                                        Fully received
+                                    </span>
+                                </div>
+
+                                <TextInput
+                                    v-else
+                                    :id="`quantity-${index}`"
+                                    v-model="form.lines[index].quantity"
+                                    type="text"
+                                    inputmode="decimal"
+                                    placeholder="0.000"
+                                    :mono="true"
+                                    :disabled="form.processing"
+                                />
+                            </FormField>
+                        </div>
+                    </div>
+                </div>
+            </Card>
+
+            <!-- Actions Row -->
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+                <AppButton
                     type="submit"
+                    variant="primary"
+                    :loading="form.processing"
                     :disabled="form.processing"
-                    class="flex min-h-11 items-center rounded bg-gray-900 px-5 text-white disabled:opacity-50"
                 >
                     {{ form.processing ? 'Saving…' : 'Save draft' }}
-                </button>
-                <button type="button" class="flex min-h-11 items-center rounded border px-5" @click="cancel">Cancel</button>
+                </AppButton>
+
+                <AppButton
+                    type="button"
+                    variant="secondary"
+                    :disabled="form.processing"
+                    @click="cancel"
+                >
+                    Cancel
+                </AppButton>
             </div>
         </form>
     </div>

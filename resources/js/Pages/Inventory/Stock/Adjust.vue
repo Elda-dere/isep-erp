@@ -1,6 +1,14 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { Head, useForm } from '@inertiajs/vue3';
+import AppButton from '../../../Components/AppButton.vue';
+import Card from '../../../Components/Card.vue';
+import ErrorAlert from '../../../Components/ErrorAlert.vue';
 import FlashMessage from '../../../Components/FlashMessage.vue';
+import FormField from '../../../Components/FormField.vue';
+import PageHeader from '../../../Components/PageHeader.vue';
+import SelectInput from '../../../Components/SelectInput.vue';
+import TextInput from '../../../Components/TextInput.vue';
 
 const props = defineProps({
     products: Array, // each has id, sku, name and unit.symbol
@@ -62,122 +70,238 @@ function submitAdjustment() {
 }
 
 function label(product) {
-    return `${product.sku} — ${product.name}${product.unit ? ` (${product.unit.symbol})` : ''}`;
+    return `${product.sku} — ${product.name}${product.unit?.symbol ? ` (${product.unit.symbol})` : ''}`;
 }
+
+const productOptions = computed(() =>
+    (props.products ?? []).map((product) => ({
+        value: product.id,
+        label: label(product),
+    })),
+);
+
+const warehouseOptions = computed(() =>
+    (props.warehouses ?? []).map((warehouse) => ({
+        value: warehouse.id,
+        label: warehouse.name,
+    })),
+);
+
+const directionOptions = [
+    { value: 'add', label: 'Add stock' },
+    { value: 'remove', label: 'Remove stock' },
+];
+
+const openingErrors = computed(() => Object.values(opening.errors).filter(Boolean));
+const adjustmentErrors = computed(() => Object.values(adjustment.errors).filter(Boolean));
 </script>
 
 <template>
     <Head title="Adjust stock" />
 
-    <div class="max-w-2xl">
-        <Link href="/stock" class="text-sm text-gray-600 underline">← Stock overview</Link>
-        <h1 class="mt-2 text-2xl font-semibold">Adjust stock</h1>
+    <div class="max-w-4xl space-y-6">
+        <PageHeader
+            title="Adjust stock"
+            subtitle="Record initial opening balances or adjust stock quantities for count discrepancies, damage, or found items."
+            back-href="/stock"
+            back-label="Stock overview"
+        />
 
-        <FlashMessage class="mt-4" />
+        <FlashMessage />
 
         <!-- Opening stock -->
-        <section class="mt-6 rounded border bg-white p-4">
-            <h2 class="text-lg font-semibold">Opening stock</h2>
-            <p class="mt-1 text-sm text-gray-500">
-                The starting quantity of a product in a warehouse. It can be entered only once for each product and warehouse.
-                Later changes are adjustments.
-            </p>
+        <Card
+            title="Opening stock"
+            description="The starting quantity of a product in a warehouse. It can be entered only once for each product and warehouse. Later changes are adjustments."
+            padding="md"
+        >
+            <ErrorAlert
+                v-if="openingErrors.length > 0"
+                :messages="openingErrors"
+                class="mb-4"
+            />
 
-            <form class="mt-4 grid gap-4 sm:grid-cols-2" @submit.prevent="submitOpening">
-                <div>
-                    <label for="opening_product" class="block text-sm font-medium">Product</label>
-                    <select id="opening_product" v-model="opening.product_id" class="mt-1 h-11 w-full rounded border border-gray-300 px-3">
-                        <option value="" disabled>Choose a product</option>
-                        <option v-for="product in products" :key="product.id" :value="product.id">{{ label(product) }}</option>
-                    </select>
-                    <p v-if="opening.errors.product_id" class="mt-1 text-sm text-red-700">{{ opening.errors.product_id }}</p>
-                </div>
+            <form class="grid gap-4 sm:grid-cols-2" @submit.prevent="submitOpening">
+                <FormField
+                    for-id="opening_product"
+                    label="Product"
+                    required
+                    :error="opening.errors.product_id"
+                >
+                    <SelectInput
+                        id="opening_product"
+                        v-model="opening.product_id"
+                        :options="productOptions"
+                        placeholder="Choose a product"
+                        :invalid="Boolean(opening.errors.product_id)"
+                    />
+                </FormField>
 
-                <div>
-                    <label for="opening_warehouse" class="block text-sm font-medium">Warehouse</label>
-                    <select id="opening_warehouse" v-model="opening.warehouse_id" class="mt-1 h-11 w-full rounded border border-gray-300 px-3">
-                        <option value="" disabled>Choose a warehouse</option>
-                        <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">{{ warehouse.name }}</option>
-                    </select>
-                    <p v-if="opening.errors.warehouse_id" class="mt-1 text-sm text-red-700">{{ opening.errors.warehouse_id }}</p>
-                </div>
+                <FormField
+                    for-id="opening_warehouse"
+                    label="Warehouse"
+                    required
+                    :error="opening.errors.warehouse_id"
+                >
+                    <SelectInput
+                        id="opening_warehouse"
+                        v-model="opening.warehouse_id"
+                        :options="warehouseOptions"
+                        placeholder="Choose a warehouse"
+                        :invalid="Boolean(opening.errors.warehouse_id)"
+                    />
+                </FormField>
 
                 <!-- inputmode="decimal" shows the number keyboard on phones. Use a dot for decimals: 2.5 -->
-                <div>
-                    <label for="opening_quantity" class="block text-sm font-medium">Quantity</label>
-                    <input id="opening_quantity" v-model="opening.quantity" type="text" inputmode="decimal" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                    <p v-if="opening.errors.quantity" class="mt-1 text-sm text-red-700" role="alert">{{ opening.errors.quantity }}</p>
-                </div>
+                <FormField
+                    for-id="opening_quantity"
+                    label="Quantity"
+                    required
+                    hint="Positive amount with up to 3 decimal places (e.g. 10.000)"
+                    :error="opening.errors.quantity"
+                >
+                    <TextInput
+                        id="opening_quantity"
+                        v-model="opening.quantity"
+                        type="text"
+                        inputmode="decimal"
+                        placeholder="e.g. 10.000"
+                        :invalid="Boolean(opening.errors.quantity)"
+                    />
+                </FormField>
 
-                <div>
-                    <label for="opening_note" class="block text-sm font-medium">Note (optional)</label>
-                    <input id="opening_note" v-model="opening.note" type="text" maxlength="1000" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                    <p v-if="opening.errors.note" class="mt-1 text-sm text-red-700">{{ opening.errors.note }}</p>
-                </div>
+                <FormField
+                    for-id="opening_note"
+                    label="Note"
+                    hint="Optional context or reference"
+                    :error="opening.errors.note"
+                >
+                    <TextInput
+                        id="opening_note"
+                        v-model="opening.note"
+                        type="text"
+                        maxlength="1000"
+                        placeholder="Optional note"
+                        :invalid="Boolean(opening.errors.note)"
+                    />
+                </FormField>
 
-                <div class="sm:col-span-2">
-                    <button type="submit" :disabled="opening.processing" class="flex min-h-11 items-center rounded bg-gray-900 px-5 text-white disabled:opacity-50">
+                <div class="pt-2 sm:col-span-2">
+                    <AppButton
+                        type="submit"
+                        :loading="opening.processing"
+                        :disabled="opening.processing"
+                    >
                         {{ opening.processing ? 'Saving…' : 'Record opening stock' }}
-                    </button>
+                    </AppButton>
                 </div>
             </form>
-        </section>
+        </Card>
 
         <!-- Manual adjustment -->
-        <section class="mt-6 rounded border bg-white p-4">
-            <h2 class="text-lg font-semibold">Adjustment</h2>
-            <p class="mt-1 text-sm text-gray-500">
-                A correction after a count, damage or loss. A note is required, and stock can never go below zero.
-            </p>
+        <Card
+            title="Adjustment"
+            description="A correction after a count, damage or loss. A note is required, and stock can never go below zero."
+            padding="md"
+        >
+            <ErrorAlert
+                v-if="adjustmentErrors.length > 0"
+                :messages="adjustmentErrors"
+                class="mb-4"
+            />
 
-            <form class="mt-4 grid gap-4 sm:grid-cols-2" @submit.prevent="submitAdjustment">
-                <div>
-                    <label for="adjust_product" class="block text-sm font-medium">Product</label>
-                    <select id="adjust_product" v-model="adjustment.product_id" class="mt-1 h-11 w-full rounded border border-gray-300 px-3">
-                        <option value="" disabled>Choose a product</option>
-                        <option v-for="product in products" :key="product.id" :value="product.id">{{ label(product) }}</option>
-                    </select>
-                    <p v-if="adjustment.errors.product_id" class="mt-1 text-sm text-red-700">{{ adjustment.errors.product_id }}</p>
-                </div>
+            <form class="grid gap-4 sm:grid-cols-2" @submit.prevent="submitAdjustment">
+                <FormField
+                    for-id="adjust_product"
+                    label="Product"
+                    required
+                    :error="adjustment.errors.product_id"
+                >
+                    <SelectInput
+                        id="adjust_product"
+                        v-model="adjustment.product_id"
+                        :options="productOptions"
+                        placeholder="Choose a product"
+                        :invalid="Boolean(adjustment.errors.product_id)"
+                    />
+                </FormField>
 
-                <div>
-                    <label for="adjust_warehouse" class="block text-sm font-medium">Warehouse</label>
-                    <select id="adjust_warehouse" v-model="adjustment.warehouse_id" class="mt-1 h-11 w-full rounded border border-gray-300 px-3">
-                        <option value="" disabled>Choose a warehouse</option>
-                        <option v-for="warehouse in warehouses" :key="warehouse.id" :value="warehouse.id">{{ warehouse.name }}</option>
-                    </select>
-                    <p v-if="adjustment.errors.warehouse_id" class="mt-1 text-sm text-red-700">{{ adjustment.errors.warehouse_id }}</p>
-                </div>
+                <FormField
+                    for-id="adjust_warehouse"
+                    label="Warehouse"
+                    required
+                    :error="adjustment.errors.warehouse_id"
+                >
+                    <SelectInput
+                        id="adjust_warehouse"
+                        v-model="adjustment.warehouse_id"
+                        :options="warehouseOptions"
+                        placeholder="Choose a warehouse"
+                        :invalid="Boolean(adjustment.errors.warehouse_id)"
+                    />
+                </FormField>
 
-                <div>
-                    <label for="adjust_direction" class="block text-sm font-medium">Change</label>
-                    <select id="adjust_direction" v-model="adjustment.direction" class="mt-1 h-11 w-full rounded border border-gray-300 px-3">
-                        <option value="" disabled>Add or remove?</option>
-                        <option value="add">Add stock</option>
-                        <option value="remove">Remove stock</option>
-                    </select>
-                    <p v-if="adjustment.errors.direction" class="mt-1 text-sm text-red-700">{{ adjustment.errors.direction }}</p>
-                </div>
+                <FormField
+                    for-id="adjust_direction"
+                    label="Change"
+                    required
+                    :error="adjustment.errors.direction"
+                >
+                    <SelectInput
+                        id="adjust_direction"
+                        v-model="adjustment.direction"
+                        :options="directionOptions"
+                        placeholder="Add or remove?"
+                        :invalid="Boolean(adjustment.errors.direction)"
+                    />
+                </FormField>
 
-                <div>
-                    <label for="adjust_quantity" class="block text-sm font-medium">Quantity</label>
-                    <input id="adjust_quantity" v-model="adjustment.quantity" type="text" inputmode="decimal" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                    <!-- This is where "Insufficient stock: available 2.000, requested 2.500" appears (INV-07) -->
-                    <p v-if="adjustment.errors.quantity" class="mt-1 text-sm text-red-700" role="alert">{{ adjustment.errors.quantity }}</p>
-                </div>
+                <!-- This is where "Insufficient stock: available 2.000, requested 2.500" appears (INV-07) -->
+                <FormField
+                    for-id="adjust_quantity"
+                    label="Quantity"
+                    required
+                    hint="Positive amount with up to 3 decimal places"
+                    :error="adjustment.errors.quantity"
+                >
+                    <TextInput
+                        id="adjust_quantity"
+                        v-model="adjustment.quantity"
+                        type="text"
+                        inputmode="decimal"
+                        placeholder="e.g. 3.500"
+                        :invalid="Boolean(adjustment.errors.quantity)"
+                    />
+                </FormField>
 
-                <div class="sm:col-span-2">
-                    <label for="adjust_note" class="block text-sm font-medium">Note (required)</label>
-                    <input id="adjust_note" v-model="adjustment.note" type="text" maxlength="1000" placeholder="For example: damaged in storage" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                    <p v-if="adjustment.errors.note" class="mt-1 text-sm text-red-700">{{ adjustment.errors.note }}</p>
-                </div>
+                <FormField
+                    for-id="adjust_note"
+                    label="Note"
+                    required
+                    hint="State the reason (e.g. count correction, damaged goods)"
+                    :error="adjustment.errors.note"
+                    class="sm:col-span-2"
+                >
+                    <TextInput
+                        id="adjust_note"
+                        v-model="adjustment.note"
+                        type="text"
+                        maxlength="1000"
+                        placeholder="For example: damaged in storage"
+                        :invalid="Boolean(adjustment.errors.note)"
+                    />
+                </FormField>
 
-                <div class="sm:col-span-2">
-                    <button type="submit" :disabled="adjustment.processing" class="flex min-h-11 items-center rounded bg-gray-900 px-5 text-white disabled:opacity-50">
+                <div class="pt-2 sm:col-span-2">
+                    <AppButton
+                        type="submit"
+                        :loading="adjustment.processing"
+                        :disabled="adjustment.processing"
+                    >
                         {{ adjustment.processing ? 'Saving…' : 'Save adjustment' }}
-                    </button>
+                    </AppButton>
                 </div>
             </form>
-        </section>
+        </Card>
     </div>
 </template>

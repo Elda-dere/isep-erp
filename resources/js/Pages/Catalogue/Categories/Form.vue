@@ -1,20 +1,26 @@
 <script setup>
 import { computed } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
+import AppButton from '../../../Components/AppButton.vue';
+import Card from '../../../Components/Card.vue';
+import FormField from '../../../Components/FormField.vue';
+import PageHeader from '../../../Components/PageHeader.vue';
+import TextInput from '../../../Components/TextInput.vue';
 
 const props = defineProps({
-    category: Object, // null when creating, the category when editing
+    category: {
+        type: Object,
+        default: null,
+    },
 });
 
 const isEdit = computed(() => props.category !== null);
 
-// useForm keeps the values, sends them, and remembers the server's validation errors.
 const form = useForm({
     name: props.category?.name ?? '',
     description: props.category?.description ?? '',
 });
 
-// Edit sends PUT /categories/{id}; create sends POST /categories.
 function submit() {
     if (isEdit.value) {
         form.put(`/categories/${props.category.id}`);
@@ -27,32 +33,70 @@ function submit() {
 <template>
     <Head :title="isEdit ? 'Edit category' : 'New category'" />
 
-    <div class="max-w-xl">
-        <h1 class="text-2xl font-semibold">{{ isEdit ? 'Edit category' : 'New category' }}</h1>
+    <div class="max-w-2xl space-y-6">
+        <PageHeader
+            :title="isEdit ? 'Edit category' : 'New category'"
+            :subtitle="isEdit ? 'Update category name and description.' : 'Create a new category to organize catalogue products.'"
+            back-href="/categories"
+            back-label="Categories"
+        />
 
-        <form class="mt-6 space-y-4" @submit.prevent="submit">
-            <div>
-                <label for="name" class="block text-sm font-medium">Name</label>
-                <input id="name" v-model="form.name" type="text" maxlength="100" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                <p v-if="form.errors.name" class="mt-1 text-sm text-red-700">{{ form.errors.name }}</p>
-            </div>
-
-            <div>
-                <label for="description" class="block text-sm font-medium">Description (optional)</label>
-                <textarea id="description" v-model="form.description" rows="3" class="mt-1 w-full rounded border border-gray-300 px-3 py-2"></textarea>
-                <p v-if="form.errors.description" class="mt-1 text-sm text-red-700">{{ form.errors.description }}</p>
-            </div>
-
-            <div class="flex gap-3">
-                <button
-                    type="submit"
-                    :disabled="form.processing"
-                    class="flex min-h-11 items-center rounded bg-gray-900 px-5 text-white disabled:opacity-50"
+        <Card padding="md">
+            <form class="space-y-5" @submit.prevent="submit">
+                <FormField
+                    for-id="category_name"
+                    label="Category name"
+                    required
+                    :error="form.errors.name"
                 >
-                    {{ form.processing ? 'Saving…' : 'Save' }}
-                </button>
-                <Link href="/categories" class="flex min-h-11 items-center rounded border px-5">Cancel</Link>
-            </div>
-        </form>
+                    <TextInput
+                        id="category_name"
+                        v-model="form.name"
+                        type="text"
+                        maxlength="100"
+                        placeholder="e.g. Beverages"
+                        autocomplete="off"
+                        :disabled="form.processing"
+                        autofocus
+                    />
+                </FormField>
+
+                <FormField
+                    for-id="category_description"
+                    label="Description"
+                    hint="Optional summary or notes about products in this category"
+                    :error="form.errors.description"
+                >
+                    <textarea
+                        id="category_description"
+                        v-model="form.description"
+                        rows="3"
+                        maxlength="255"
+                        placeholder="e.g. Bottled water, juices, and soft drinks"
+                        :disabled="form.processing"
+                        class="block w-full rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint shadow-2xs transition-colors focus:border-forest focus:outline-none focus:ring-1 focus:ring-forest disabled:bg-stone disabled:opacity-75"
+                    />
+                </FormField>
+
+                <div class="flex flex-wrap items-center gap-3 pt-2">
+                    <AppButton
+                        type="submit"
+                        variant="primary"
+                        :loading="form.processing"
+                        :disabled="form.processing"
+                    >
+                        {{ form.processing ? 'Saving…' : (isEdit ? 'Save changes' : 'Create category') }}
+                    </AppButton>
+
+                    <AppButton
+                        variant="secondary"
+                        href="/categories"
+                        :disabled="form.processing"
+                    >
+                        Cancel
+                    </AppButton>
+                </div>
+            </form>
+        </Card>
     </div>
 </template>

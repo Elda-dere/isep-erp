@@ -1,14 +1,21 @@
 <script setup>
 import { computed } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
+import AppButton from '../../../Components/AppButton.vue';
+import Card from '../../../Components/Card.vue';
+import FormField from '../../../Components/FormField.vue';
+import PageHeader from '../../../Components/PageHeader.vue';
+import TextInput from '../../../Components/TextInput.vue';
 
 const props = defineProps({
-    supplier: Object, // null when creating, the supplier when editing
+    supplier: {
+        type: Object,
+        default: null,
+    },
 });
 
 const isEdit = computed(() => props.supplier !== null);
 
-// useForm keeps the values, sends them, and remembers the server's validation errors.
 const form = useForm({
     name: props.supplier?.name ?? '',
     phone: props.supplier?.phone ?? '',
@@ -16,7 +23,6 @@ const form = useForm({
     address: props.supplier?.address ?? '',
 });
 
-// Edit sends PUT /suppliers/{id}; create sends POST /suppliers.
 function submit() {
     if (isEdit.value) {
         form.put(`/suppliers/${props.supplier.id}`);
@@ -29,45 +35,105 @@ function submit() {
 <template>
     <Head :title="isEdit ? 'Edit supplier' : 'New supplier'" />
 
-    <div class="max-w-xl">
-        <h1 class="text-2xl font-semibold">{{ isEdit ? 'Edit supplier' : 'New supplier' }}</h1>
+    <div class="max-w-2xl space-y-6">
+        <PageHeader
+            :title="isEdit ? 'Edit supplier' : 'New supplier'"
+            :subtitle="isEdit ? `Update contact and procurement details for ${supplier.name}.` : 'Add a new supplier to the procurement vendor directory.'"
+            back-href="/suppliers"
+            back-label="Suppliers"
+        />
 
-        <form class="mt-6 space-y-4" @submit.prevent="submit">
-            <div>
-                <label for="name" class="block text-sm font-medium">Name</label>
-                <input id="name" v-model="form.name" type="text" maxlength="180" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                <p v-if="form.errors.name" class="mt-1 text-sm text-red-700">{{ form.errors.name }}</p>
-            </div>
-
-            <!-- type="tel" shows the telephone keyboard on phones (NFR-MOB-02) -->
-            <div>
-                <label for="phone" class="block text-sm font-medium">Phone (optional)</label>
-                <input id="phone" v-model="form.phone" type="tel" maxlength="30" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                <p v-if="form.errors.phone" class="mt-1 text-sm text-red-700">{{ form.errors.phone }}</p>
-            </div>
-
-            <div>
-                <label for="email" class="block text-sm font-medium">Email (optional)</label>
-                <input id="email" v-model="form.email" type="email" maxlength="190" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                <p v-if="form.errors.email" class="mt-1 text-sm text-red-700">{{ form.errors.email }}</p>
-            </div>
-
-            <div>
-                <label for="address" class="block text-sm font-medium">Address (optional)</label>
-                <textarea id="address" v-model="form.address" rows="3" class="mt-1 w-full rounded border border-gray-300 px-3 py-2"></textarea>
-                <p v-if="form.errors.address" class="mt-1 text-sm text-red-700">{{ form.errors.address }}</p>
-            </div>
-
-            <div class="flex gap-3">
-                <button
-                    type="submit"
-                    :disabled="form.processing"
-                    class="flex min-h-11 items-center rounded bg-gray-900 px-5 text-white disabled:opacity-50"
+        <Card padding="md">
+            <form class="space-y-5" @submit.prevent="submit">
+                <FormField
+                    for-id="name"
+                    label="Supplier name"
+                    required
+                    :error="form.errors.name"
                 >
-                    {{ form.processing ? 'Saving…' : 'Save' }}
-                </button>
-                <Link href="/suppliers" class="flex min-h-11 items-center rounded border px-5">Cancel</Link>
-            </div>
-        </form>
+                    <TextInput
+                        id="name"
+                        v-model="form.name"
+                        type="text"
+                        maxlength="180"
+                        placeholder="e.g. Acme Trading PLC"
+                        autocomplete="off"
+                        :disabled="form.processing"
+                        autofocus
+                    />
+                </FormField>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                        for-id="phone"
+                        label="Phone"
+                        hint="Optional (max 30 chars)"
+                        :error="form.errors.phone"
+                    >
+                        <TextInput
+                            id="phone"
+                            v-model="form.phone"
+                            type="tel"
+                            maxlength="30"
+                            placeholder="e.g. +251 91 100 0000"
+                            autocomplete="tel"
+                            :disabled="form.processing"
+                        />
+                    </FormField>
+
+                    <FormField
+                        for-id="email"
+                        label="Email"
+                        hint="Optional (max 190 chars)"
+                        :error="form.errors.email"
+                    >
+                        <TextInput
+                            id="email"
+                            v-model="form.email"
+                            type="email"
+                            maxlength="190"
+                            placeholder="e.g. sales@acmetrading.com"
+                            autocomplete="email"
+                            :disabled="form.processing"
+                        />
+                    </FormField>
+                </div>
+
+                <FormField
+                    for-id="address"
+                    label="Address"
+                    hint="Optional delivery address, warehouse location, or office notes"
+                    :error="form.errors.address"
+                >
+                    <textarea
+                        id="address"
+                        v-model="form.address"
+                        rows="3"
+                        placeholder="e.g. Bole Subcity, Kebele 03, Addis Ababa"
+                        :disabled="form.processing"
+                        class="block w-full rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint shadow-2xs transition-colors focus:border-forest focus:outline-none focus:ring-1 focus:ring-forest disabled:bg-stone disabled:opacity-75"
+                    />
+                </FormField>
+
+                <div class="flex flex-wrap items-center gap-3 pt-2">
+                    <AppButton
+                        type="submit"
+                        variant="primary"
+                        :loading="form.processing"
+                        :disabled="form.processing"
+                    >
+                        {{ form.processing ? 'Saving…' : (isEdit ? 'Save changes' : 'Create supplier') }}
+                    </AppButton>
+
+                    <AppButton
+                        variant="secondary"
+                        href="/suppliers"
+                        :disabled="form.processing"
+                    >
+                        Cancel
+                    </AppButton>
+                </div>
+            </form>
+        </Card>
     </div>
 </template>

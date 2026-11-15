@@ -1,9 +1,19 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import AppButton from '../../Components/AppButton.vue';
+import Card from '../../Components/Card.vue';
+import DataTable from '../../Components/DataTable.vue';
+import EmptyState from '../../Components/EmptyState.vue';
+import ErrorAlert from '../../Components/ErrorAlert.vue';
 import FlashMessage from '../../Components/FlashMessage.vue';
+import FormField from '../../Components/FormField.vue';
+import NavIcon from '../../Components/NavIcon.vue';
+import PageHeader from '../../Components/PageHeader.vue';
 import PagerLinks from '../../Components/PagerLinks.vue';
+import SelectInput from '../../Components/SelectInput.vue';
 import StatusBadge from '../../Components/StatusBadge.vue';
+import TextInput from '../../Components/TextInput.vue';
 import { formatDateTime, formatMoney } from '../../format.js';
 
 const props = defineProps({
@@ -21,6 +31,15 @@ const canCreate = computed(() => page.props.auth?.permissions?.includes('sales.c
 
 // Validation messages for the filters (for example "to" earlier than "from").
 const errors = computed(() => page.props.errors ?? {});
+const filterErrors = computed(() =>
+    [
+        errors.value.status,
+        errors.value.customer_id,
+        errors.value.created_by,
+        errors.value.from,
+        errors.value.to,
+    ].filter(Boolean),
+);
 
 // The filter boxes start with the values from the URL, so a reload keeps them.
 const status = ref(props.filters?.status ?? '');
@@ -28,6 +47,11 @@ const customerId = ref(props.filters?.customer_id ?? '');
 const createdBy = ref(props.filters?.created_by ?? '');
 const from = ref(props.filters?.from ?? '');
 const to = ref(props.filters?.to ?? '');
+const isFiltering = ref(false);
+
+const hasActiveFilters = computed(() =>
+    Boolean(status.value || customerId.value || createdBy.value || from.value || to.value),
+);
 
 // Ask the server for the list again with the chosen filters.
 // The filtering itself happens in SaleController::index (SQL), not here.
@@ -41,110 +65,243 @@ function applyFilters() {
             from: from.value || undefined,
             to: to.value || undefined,
         },
-        { preserveState: true, replace: true },
+        {
+            preserveState: true,
+            replace: true,
+            onStart: () => {
+                isFiltering.value = true;
+            },
+            onFinish: () => {
+                isFiltering.value = false;
+            },
+        },
     );
+}
+
+function clearFilters() {
+    status.value = '';
+    customerId.value = '';
+    createdBy.value = '';
+    from.value = '';
+    to.value = '';
 }
 
 watch([status, customerId, createdBy, from, to], applyFilters);
 
 const statusNames = { pending: 'Pending payment', paid: 'Paid', cancelled: 'Cancelled' };
+
+const statusOptions = computed(() =>
+    (props.statuses ?? []).map((option) => ({
+        value: option,
+        label: statusNames[option] ?? option,
+    })),
+);
+
+const customerOptions = computed(() =>
+    (props.customers ?? []).map((customer) => ({
+        value: customer.id,
+        label: customer.name,
+    })),
+);
+
+const cashierOptions = computed(() =>
+    (props.cashiers ?? []).map((cashier) => ({
+        value: cashier.id,
+        label: cashier.name,
+    })),
+);
+
+const columns = [
+    { key: 'sale_number', label: 'Sale' },
+    { key: 'customer', label: 'Customer' },
+    { key: 'status', label: 'Status' },
+    { key: 'lines_count', label: 'Lines', align: 'right' },
+    { key: 'total_amount', label: 'Total', align: 'right' },
+    { key: 'created_by', label: 'Cashier' },
+    { key: 'created_at', label: 'Date' },
+];
 </script>
 
 <template>
     <Head title="Sales" />
 
     <div>
-        <div class="flex items-start justify-between gap-3">
-            <div>
-                <h1 class="text-2xl font-semibold">Sales</h1>
-                <p class="mt-1 text-sm text-gray-500">{{ sales.total }} sale(s)</p>
-            </div>
-            <Link v-if="canCreate" href="/sales/create" class="flex min-h-11 items-center rounded bg-gray-900 px-4 text-white">
-                New sale
-            </Link>
-        </div>
+        <PageHeader title="Sales" :subtitle="`${sales.total} sale(s)`">
+            <template v-if="canCreate" #actions>
+                <AppButton href="/sales/create">
+                    <template #icon>
+                        <NavIcon name="new-sale" />
+                    </template>
+                    New sale
+                </AppButton>
+            </template>
+        </PageHeader>
 
-        <FlashMessage class="mt-4" />
+        <FlashMessage />
 
         <!-- Filters. Labels are visible because the date boxes need them. -->
-        <div class="mt-4 grid gap-3 sm:grid-cols-5">
-            <div>
-                <label for="status" class="block text-xs text-gray-500">Status</label>
-                <select id="status" v-model="status" class="h-11 w-full rounded border border-gray-300 px-3">
-                    <option value="">All statuses</option>
-                    <option v-for="option in statuses" :key="option" :value="option">{{ statusNames[option] ?? option }}</option>
-                </select>
-            </div>
-            <div>
-                <label for="customer" class="block text-xs text-gray-500">Customer</label>
-                <select id="customer" v-model="customerId" class="h-11 w-full rounded border border-gray-300 px-3">
-                    <option value="">All customers</option>
-                    <option v-for="customer in customers" :key="customer.id" :value="customer.id">{{ customer.name }}</option>
-                </select>
-            </div>
-            <div>
-                <label for="cashier" class="block text-xs text-gray-500">Cashier</label>
-                <select id="cashier" v-model="createdBy" class="h-11 w-full rounded border border-gray-300 px-3">
-                    <option value="">All cashiers</option>
-                    <option v-for="cashier in cashiers" :key="cashier.id" :value="cashier.id">{{ cashier.name }}</option>
-                </select>
-            </div>
-            <div>
-                <label for="from" class="block text-xs text-gray-500">From</label>
-                <input id="from" v-model="from" type="date" class="h-11 w-full rounded border border-gray-300 px-3" />
-            </div>
-            <div>
-                <label for="to" class="block text-xs text-gray-500">To</label>
-                <input id="to" v-model="to" type="date" class="h-11 w-full rounded border border-gray-300 px-3" />
-            </div>
-        </div>
-        <p v-if="errors.to || errors.from || errors.status" class="mt-2 text-sm text-red-700" role="alert">
-            {{ errors.to || errors.from || errors.status }}
-        </p>
+        <Card padding="sm" class="mb-4">
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <FormField for-id="status" label="Status" label-tone="compact">
+                    <SelectInput
+                        v-model="status"
+                        :options="statusOptions"
+                        placeholder="All statuses"
+                        :invalid="Boolean(errors.status)"
+                    />
+                </FormField>
 
-        <p v-if="sales.data.length === 0" class="mt-8 text-center text-gray-500">No sales found.</p>
+                <FormField for-id="customer" label="Customer" label-tone="compact">
+                    <SelectInput
+                        v-model="customerId"
+                        :options="customerOptions"
+                        placeholder="All customers"
+                        :invalid="Boolean(errors.customer_id)"
+                    />
+                </FormField>
 
-        <!-- Table: from the "sm" breakpoint (640 px) upward -->
-        <table v-else class="mt-4 hidden w-full text-left text-sm sm:table">
-            <thead class="border-b text-gray-500">
-                <tr>
-                    <th class="py-2">Sale</th>
-                    <th>Customer</th>
-                    <th>Status</th>
-                    <th class="text-right">Lines</th>
-                    <th class="text-right">Total</th>
-                    <th class="pl-4">Cashier</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="sale in sales.data" :key="sale.id" class="border-b">
-                    <td class="py-1">
-                        <Link :href="`/sales/${sale.id}`" class="flex min-h-11 items-center font-mono underline">
-                            {{ sale.sale_number }}
-                        </Link>
-                    </td>
-                    <td>{{ sale.customer }}</td>
-                    <td><StatusBadge :status="sale.status" /></td>
-                    <td class="text-right">{{ sale.lines_count }}</td>
-                    <td class="text-right">{{ formatMoney(sale.total_amount, sale.currency) }}</td>
-                    <td class="pl-4">{{ sale.created_by }}</td>
-                    <td>{{ formatDateTime(sale.created_at) }}</td>
-                </tr>
-            </tbody>
-        </table>
+                <FormField for-id="cashier" label="Cashier" label-tone="compact">
+                    <SelectInput
+                        v-model="createdBy"
+                        :options="cashierOptions"
+                        placeholder="All cashiers"
+                        :invalid="Boolean(errors.created_by)"
+                    />
+                </FormField>
 
-        <!-- Cards: below 640 px (phones). Same data, stacked. -->
-        <div v-if="sales.data.length" class="mt-4 space-y-3 sm:hidden">
-            <Link v-for="sale in sales.data" :key="sale.id" :href="`/sales/${sale.id}`" class="block rounded border bg-white p-3">
-                <div class="flex items-start justify-between gap-2">
-                    <p class="font-mono font-medium">{{ sale.sale_number }}</p>
-                    <StatusBadge :status="sale.status" />
+                <FormField for-id="from" label="From" label-tone="compact">
+                    <TextInput
+                        v-model="from"
+                        type="date"
+                        :invalid="Boolean(errors.from)"
+                    />
+                </FormField>
+
+                <FormField for-id="to" label="To" label-tone="compact">
+                    <TextInput
+                        v-model="to"
+                        type="date"
+                        :invalid="Boolean(errors.to)"
+                    />
+                </FormField>
+            </div>
+
+            <template v-if="hasActiveFilters || isFiltering" #footer>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <p role="status" class="text-xs text-ink-muted">
+                        <span v-if="isFiltering">Updating sales list…</span>
+                        <span v-else>Active filters applied</span>
+                    </p>
+                    <AppButton
+                        v-if="hasActiveFilters"
+                        variant="secondary"
+                        size="sm"
+                        :disabled="isFiltering"
+                        @click="clearFilters"
+                    >
+                        Clear filters
+                    </AppButton>
                 </div>
-                <p class="mt-1 text-sm text-gray-600">{{ sale.customer }}</p>
-                <p class="mt-1 text-sm">{{ formatMoney(sale.total_amount, sale.currency) }} · {{ sale.lines_count }} line(s)</p>
-                <p class="text-xs text-gray-500">{{ sale.created_by }} · {{ formatDateTime(sale.created_at) }}</p>
-            </Link>
+            </template>
+        </Card>
+
+        <ErrorAlert
+            v-if="filterErrors.length"
+            :messages="filterErrors"
+            class="mb-4"
+        />
+
+        <div :aria-busy="isFiltering ? 'true' : undefined" :class="{ 'opacity-75 transition-opacity': isFiltering }">
+            <DataTable
+                :items="sales.data"
+                :columns="columns"
+                breakpoint="sm"
+                :mobile-href="(sale) => `/sales/${sale.id}`"
+            >
+                <template #cell-sale_number="{ item }">
+                    <Link
+                        :href="`/sales/${item.id}`"
+                        class="-my-2 inline-flex min-h-11 items-center font-mono font-medium text-forest underline decoration-forest/30 underline-offset-2 hover:text-forest-hover hover:decoration-forest"
+                    >
+                        {{ item.sale_number }}
+                    </Link>
+                </template>
+
+                <template #cell-customer="{ item }">
+                    {{ item.customer ?? '—' }}
+                </template>
+
+                <template #cell-status="{ item }">
+                    <StatusBadge :status="item.status" />
+                </template>
+
+                <template #cell-total_amount="{ item }">
+                    <span class="font-medium text-ink">
+                        {{ formatMoney(item.total_amount, item.currency) }}
+                    </span>
+                </template>
+
+                <template #cell-created_by="{ item }">
+                    <span class="text-ink-muted">
+                        {{ item.created_by ?? '—' }}
+                    </span>
+                </template>
+
+                <template #cell-created_at="{ item }">
+                    <span class="whitespace-nowrap text-ink-muted">
+                        {{ formatDateTime(item.created_at) }}
+                    </span>
+                </template>
+
+                <template #mobile-card="{ item }">
+                    <div class="flex items-start justify-between gap-3">
+                        <p class="font-mono text-sm font-semibold text-forest">
+                            {{ item.sale_number }}
+                        </p>
+                        <StatusBadge :status="item.status" />
+                    </div>
+                    <p class="mt-1.5 text-sm font-medium text-ink">
+                        {{ item.customer ?? '—' }}
+                    </p>
+                    <p class="mt-1 text-sm font-medium text-ink tabular-nums">
+                        {{ formatMoney(item.total_amount, item.currency) }}
+                        <span class="font-normal text-ink-muted">
+                            · {{ item.lines_count }} line(s)
+                        </span>
+                    </p>
+                    <p class="mt-1 text-xs text-ink-muted">
+                        {{ item.created_by ?? '—' }} · {{ formatDateTime(item.created_at) }}
+                    </p>
+                </template>
+
+                <template #empty>
+                    <EmptyState
+                        title="No sales found."
+                        :description="
+                            hasActiveFilters
+                                ? 'No sales match the selected filters.'
+                                : canCreate
+                                    ? 'Create a sale to get started.'
+                                    : ''
+                        "
+                        icon="sales"
+                    >
+                        <template v-if="hasActiveFilters || canCreate" #actions>
+                            <AppButton
+                                v-if="hasActiveFilters"
+                                variant="secondary"
+                                size="sm"
+                                @click="clearFilters"
+                            >
+                                Clear filters
+                            </AppButton>
+                            <AppButton v-else-if="canCreate" href="/sales/create" size="sm">
+                                New sale
+                            </AppButton>
+                        </template>
+                    </EmptyState>
+                </template>
+            </DataTable>
         </div>
 
         <PagerLinks :meta="sales" />

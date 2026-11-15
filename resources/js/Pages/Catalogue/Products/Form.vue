@@ -1,17 +1,30 @@
 <script setup>
 import { computed } from 'vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
+import AppButton from '../../../Components/AppButton.vue';
+import Card from '../../../Components/Card.vue';
+import FormField from '../../../Components/FormField.vue';
+import PageHeader from '../../../Components/PageHeader.vue';
+import SelectInput from '../../../Components/SelectInput.vue';
+import TextInput from '../../../Components/TextInput.vue';
 
 const props = defineProps({
-    product: Object, // null when creating, the product when editing
-    categories: Array,
-    units: Array,
+    product: {
+        type: Object,
+        default: null,
+    },
+    categories: {
+        type: Array,
+        required: true,
+    },
+    units: {
+        type: Array,
+        required: true,
+    },
 });
 
 const isEdit = computed(() => props.product !== null);
 
-// useForm keeps the values, sends them, and remembers the server's validation errors.
-// Prices stay as TEXT ("10.50"): this keeps the decimals exact.
 const form = useForm({
     category_id: props.product?.category_id ?? '',
     unit_id: props.product?.unit_id ?? '',
@@ -24,16 +37,60 @@ const form = useForm({
     is_active: props.product?.is_active ?? true,
 });
 
+const categoryOptions = computed(() =>
+    props.categories.map((c) => ({
+        value: c.id,
+        label: c.name,
+    })),
+);
+
+const unitOptions = computed(() =>
+    props.units.map((u) => ({
+        value: u.id,
+        label: `${u.name} (${u.symbol})`,
+    })),
+);
+
+// Exact string-to-scaled-integer parser (scale 2 for ETB currency).
+// Zero floating-point math or Number() precision loss.
+function parseScaledCents(value) {
+    if (typeof value !== 'string') {
+        value = String(value ?? '').trim();
+    } else {
+        value = value.trim();
+    }
+
+    if (!value || !/^\d+(?:\.\d{1,2})?$/.test(value)) {
+        return null;
+    }
+
+    const [wholeStr, fracStr = ''] = value.split('.');
+    const paddedFrac = fracStr.padEnd(2, '0').slice(0, 2);
+
+    try {
+        return BigInt(wholeStr) * 100n + BigInt(paddedFrac);
+    } catch {
+        return null;
+    }
+}
+
 // PRD-06: warn (do not block) when the selling price is lower than the cost price.
-// Number() is used only for this on-screen warning.
+// Calculated using exact scaled integer comparison without floating-point arithmetic.
 const belowCost = computed(() => {
-    const cost = Number(form.cost_price);
-    const price = Number(form.selling_price);
-    return form.cost_price !== '' && form.selling_price !== '' && price < cost;
+    if (!form.cost_price || !form.selling_price) {
+        return false;
+    }
+
+    const cost = parseScaledCents(form.cost_price);
+    const price = parseScaledCents(form.selling_price);
+
+    if (cost === null || price === null) {
+        return false;
+    }
+
+    return price < cost;
 });
 
-// Edit sends PUT /products/{id}; create sends POST /products.
-// On a validation error the server sends us back here with the messages in form.errors.
 function submit() {
     if (isEdit.value) {
         form.put(`/products/${props.product.id}`);
@@ -46,85 +103,224 @@ function submit() {
 <template>
     <Head :title="isEdit ? 'Edit product' : 'New product'" />
 
-    <div class="max-w-2xl">
-        <h1 class="text-2xl font-semibold">{{ isEdit ? 'Edit product' : 'New product' }}</h1>
+    <div class="max-w-3xl space-y-6">
+        <PageHeader
+            :title="isEdit ? 'Edit product' : 'New product'"
+            :subtitle="isEdit ? `Update catalogue details for ${product.name}.` : 'Add a new product item to the inventory catalogue.'"
+            back-href="/products"
+            back-label="Products"
+        />
 
-        <form class="mt-6 grid gap-4 sm:grid-cols-2" @submit.prevent="submit">
-            <div>
-                <label for="sku" class="block text-sm font-medium">SKU</label>
-                <input id="sku" v-model="form.sku" type="text" maxlength="100" class="mt-1 h-11 w-full rounded border border-gray-300 px-3 font-mono" />
-                <p v-if="form.errors.sku" class="mt-1 text-sm text-red-700">{{ form.errors.sku }}</p>
-            </div>
+        <Card padding="md">
+            <form class="space-y-6" @submit.prevent="submit">
+                <!-- Top Row: SKU and Name -->
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                        for-id="sku"
+                        label="SKU"
+                        required
+                        hint="Unique product code"
+                        :error="form.errors.sku"
+                    >
+                        <TextInput
+                            id="sku"
+                            v-model="form.sku"
+                            type="text"
+                            maxlength="100"
+                            placeholder="e.g. BEV-001"
+                            autocomplete="off"
+                            :mono="true"
+                            :disabled="form.processing"
+                            autofocus
+                        />
+                    </FormField>
 
-            <div>
-                <label for="name" class="block text-sm font-medium">Name</label>
-                <input id="name" v-model="form.name" type="text" maxlength="180" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                <p v-if="form.errors.name" class="mt-1 text-sm text-red-700">{{ form.errors.name }}</p>
-            </div>
+                    <FormField
+                        for-id="name"
+                        label="Product name"
+                        required
+                        :error="form.errors.name"
+                    >
+                        <TextInput
+                            id="name"
+                            v-model="form.name"
+                            type="text"
+                            maxlength="180"
+                            placeholder="e.g. Bottled Spring Water 1L"
+                            autocomplete="off"
+                            :disabled="form.processing"
+                        />
+                    </FormField>
+                </div>
 
-            <div>
-                <label for="category_id" class="block text-sm font-medium">Category</label>
-                <select id="category_id" v-model="form.category_id" class="mt-1 h-11 w-full rounded border border-gray-300 px-3">
-                    <option value="" disabled>Choose a category</option>
-                    <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
-                </select>
-                <p v-if="form.errors.category_id" class="mt-1 text-sm text-red-700">{{ form.errors.category_id }}</p>
-            </div>
+                <!-- Classification: Category and Unit -->
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                        for-id="category_id"
+                        label="Category"
+                        required
+                        :error="form.errors.category_id"
+                    >
+                        <SelectInput
+                            id="category_id"
+                            v-model="form.category_id"
+                            :options="categoryOptions"
+                            placeholder="Choose a category"
+                            :disabled="form.processing"
+                        />
+                    </FormField>
 
-            <div>
-                <label for="unit_id" class="block text-sm font-medium">Unit</label>
-                <select id="unit_id" v-model="form.unit_id" class="mt-1 h-11 w-full rounded border border-gray-300 px-3">
-                    <option value="" disabled>Choose a unit</option>
-                    <option v-for="unit in units" :key="unit.id" :value="unit.id">{{ unit.name }} ({{ unit.symbol }})</option>
-                </select>
-                <p v-if="form.errors.unit_id" class="mt-1 text-sm text-red-700">{{ form.errors.unit_id }}</p>
-            </div>
+                    <FormField
+                        for-id="unit_id"
+                        label="Unit of measure"
+                        required
+                        :error="form.errors.unit_id"
+                    >
+                        <SelectInput
+                            id="unit_id"
+                            v-model="form.unit_id"
+                            :options="unitOptions"
+                            placeholder="Choose a unit"
+                            :disabled="form.processing"
+                        />
+                    </FormField>
+                </div>
 
-            <!-- inputmode="decimal" shows the number keyboard on phones (NFR-MOB-02) -->
-            <div>
-                <label for="cost_price" class="block text-sm font-medium">Cost price (ETB)</label>
-                <input id="cost_price" v-model="form.cost_price" type="text" inputmode="decimal" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                <p v-if="form.errors.cost_price" class="mt-1 text-sm text-red-700">{{ form.errors.cost_price }}</p>
-            </div>
+                <!-- Pricing & Stock Thresholds -->
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <FormField
+                        for-id="cost_price"
+                        label="Cost price (ETB)"
+                        required
+                        hint="Decimal up to 2 places"
+                        :error="form.errors.cost_price"
+                    >
+                        <TextInput
+                            id="cost_price"
+                            v-model="form.cost_price"
+                            type="text"
+                            inputmode="decimal"
+                            placeholder="0.00"
+                            autocomplete="off"
+                            :mono="true"
+                            :disabled="form.processing"
+                        />
+                    </FormField>
 
-            <div>
-                <label for="selling_price" class="block text-sm font-medium">Selling price (ETB)</label>
-                <input id="selling_price" v-model="form.selling_price" type="text" inputmode="decimal" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                <p v-if="form.errors.selling_price" class="mt-1 text-sm text-red-700">{{ form.errors.selling_price }}</p>
-                <p v-if="belowCost" class="mt-1 text-sm text-amber-800" role="status">
-                    Warning: the selling price is lower than the cost price.
-                </p>
-            </div>
+                    <FormField
+                        for-id="selling_price"
+                        label="Selling price (ETB)"
+                        required
+                        hint="Decimal up to 2 places"
+                        :error="form.errors.selling_price"
+                    >
+                        <TextInput
+                            id="selling_price"
+                            v-model="form.selling_price"
+                            type="text"
+                            inputmode="decimal"
+                            placeholder="0.00"
+                            autocomplete="off"
+                            :mono="true"
+                            :disabled="form.processing"
+                        />
+                    </FormField>
 
-            <div>
-                <label for="reorder_level" class="block text-sm font-medium">Reorder level</label>
-                <input id="reorder_level" v-model="form.reorder_level" type="text" inputmode="decimal" class="mt-1 h-11 w-full rounded border border-gray-300 px-3" />
-                <p v-if="form.errors.reorder_level" class="mt-1 text-sm text-red-700">{{ form.errors.reorder_level }}</p>
-            </div>
+                    <FormField
+                        for-id="reorder_level"
+                        label="Reorder level"
+                        required
+                        hint="Decimal up to 3 places"
+                        :error="form.errors.reorder_level"
+                    >
+                        <TextInput
+                            id="reorder_level"
+                            v-model="form.reorder_level"
+                            type="text"
+                            inputmode="decimal"
+                            placeholder="0.000"
+                            autocomplete="off"
+                            :mono="true"
+                            :disabled="form.processing"
+                        />
+                    </FormField>
+                </div>
 
-            <div class="flex items-end">
-                <label for="is_active" class="flex min-h-11 items-center gap-2">
-                    <input id="is_active" v-model="form.is_active" type="checkbox" class="h-5 w-5" />
-                    <span class="text-sm font-medium">Active</span>
-                </label>
-            </div>
-
-            <div class="sm:col-span-2">
-                <label for="description" class="block text-sm font-medium">Description (optional)</label>
-                <textarea id="description" v-model="form.description" rows="3" class="mt-1 w-full rounded border border-gray-300 px-3 py-2"></textarea>
-                <p v-if="form.errors.description" class="mt-1 text-sm text-red-700">{{ form.errors.description }}</p>
-            </div>
-
-            <div class="flex gap-3 sm:col-span-2">
-                <button
-                    type="submit"
-                    :disabled="form.processing"
-                    class="flex min-h-11 items-center rounded bg-gray-900 px-5 text-white disabled:opacity-50"
+                <!-- Warning banner: selling price below cost price -->
+                <div
+                    v-if="belowCost"
+                    role="status"
+                    class="rounded border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900 shadow-2xs"
                 >
-                    {{ form.processing ? 'Saving…' : 'Save' }}
-                </button>
-                <Link href="/products" class="flex min-h-11 items-center rounded border px-5">Cancel</Link>
-            </div>
-        </form>
+                    <div class="flex items-start gap-2.5">
+                        <svg class="h-5 w-5 shrink-0 text-amber-700 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                        </svg>
+                        <div>
+                            <p class="font-medium">Selling price is lower than cost price</p>
+                            <p class="mt-0.5 text-xs text-amber-800">
+                                Warning: Selling this item at this price may result in negative gross margins.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Checkbox -->
+                <div class="rounded border border-border-subtle bg-stone/40 p-4">
+                    <label for="is_active" class="flex min-h-11 cursor-pointer items-start gap-3 select-none">
+                        <input
+                            id="is_active"
+                            v-model="form.is_active"
+                            type="checkbox"
+                            :disabled="form.processing"
+                            class="mt-1 h-4 w-4 rounded border-border text-forest focus:ring-forest focus:ring-offset-1"
+                        />
+                        <div>
+                            <span class="text-sm font-medium text-ink">Active product</span>
+                            <p class="mt-0.5 text-xs text-ink-muted">
+                                Active products appear in catalog searches, stock counts, point of sale, and purchase orders.
+                            </p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Description -->
+                <FormField
+                    for-id="description"
+                    label="Description"
+                    hint="Optional notes, specifications, or packaging details"
+                    :error="form.errors.description"
+                >
+                    <textarea
+                        id="description"
+                        v-model="form.description"
+                        rows="3"
+                        placeholder="Additional details about the product..."
+                        :disabled="form.processing"
+                        class="block w-full rounded border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint shadow-2xs transition-colors focus:border-forest focus:outline-none focus:ring-1 focus:ring-forest disabled:bg-stone disabled:opacity-75"
+                    />
+                </FormField>
+
+                <!-- Actions -->
+                <div class="flex flex-wrap items-center gap-3 border-t border-border-subtle pt-4">
+                    <AppButton
+                        type="submit"
+                        variant="primary"
+                        :loading="form.processing"
+                        :disabled="form.processing"
+                    >
+                        {{ form.processing ? 'Saving…' : (isEdit ? 'Save changes' : 'Create product') }}
+                    </AppButton>
+
+                    <AppButton
+                        variant="secondary"
+                        href="/products"
+                        :disabled="form.processing"
+                    >
+                        Cancel
+                    </AppButton>
+                </div>
+            </form>
+        </Card>
     </div>
 </template>
