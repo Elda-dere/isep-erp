@@ -69,12 +69,20 @@ class EmployeeController
                 'has_login' => $employee->user_id !== null,
             ]);
 
+        $stats = [
+            'total'    => Employee::count(),
+            'active'   => Employee::where('employment_status', 'active')->count(),
+            'on_leave' => Employee::where('employment_status', 'on_leave')->count(),
+            'inactive' => Employee::whereIn('employment_status', ['suspended', 'terminated'])->count(),
+        ];
+
         return Inertia::render('Employees/Index', [
-            'employees' => $employees,
-            'filters' => $request->only(['search', 'department', 'position', 'status', 'sort', 'direction']),
+            'employees'   => $employees,
+            'filters'     => $request->only(['search', 'department', 'position', 'status', 'sort', 'direction']),
             'departments' => Department::query()->orderBy('name')->get(['id', 'name']),
-            'positions' => Position::query()->orderBy('title')->get(['id', 'title', 'department_id']),
-            'statuses' => Employee::STATUSES,
+            'positions'   => Position::query()->orderBy('title')->get(['id', 'title', 'department_id']),
+            'statuses'    => Employee::STATUSES,
+            'stats'       => $stats,
         ]);
     }
 
