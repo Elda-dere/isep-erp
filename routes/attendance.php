@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Attendance\AttendanceBoardController;
+use App\Http\Controllers\Attendance\AttendanceModesController;
 use App\Http\Controllers\Attendance\MyAttendanceController;
 use App\Http\Controllers\Attendance\MyQrController;
 use App\Http\Controllers\Attendance\ScannerController;
@@ -25,4 +26,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/attendance/board', [AttendanceBoardController::class, 'index'])
         ->middleware('permission:attendance.view_all')
         ->name('attendance.board');
+
+    // Attendance Capture Modes & Settings (matching reference design)
+    Route::middleware('permission:attendance.view_all')->group(function () {
+        Route::get('/attendance/modes', [AttendanceModesController::class, 'index'])->name('attendance.modes');
+        Route::post('/attendance/modes/settings', [AttendanceModesController::class, 'saveSettings'])->name('attendance.modes.settings');
+        Route::post('/attendance/modes/static-token', [AttendanceModesController::class, 'generateStaticToken'])->name('attendance.modes.static-token');
+        Route::post('/attendance/modes/toggle', [AttendanceModesController::class, 'toggleMode'])->name('attendance.modes.toggle');
+        Route::post('/attendance/modes/branches', [AttendanceModesController::class, 'storeBranch'])->name('attendance.modes.branches.store');
+        Route::delete('/attendance/modes/branches/{branch}', [AttendanceModesController::class, 'destroyBranch'])->name('attendance.modes.branches.destroy');
+        Route::post('/attendance/modes/devices', [AttendanceModesController::class, 'storeDevice'])->name('attendance.modes.devices.store');
+        Route::delete('/attendance/modes/devices/{device}', [AttendanceModesController::class, 'destroyDevice'])->name('attendance.modes.devices.destroy');
+        Route::post('/attendance/modes/devices/{device}/sync', [AttendanceModesController::class, 'syncDevice'])->name('attendance.modes.devices.sync');
+        Route::get('/attendance/static-qr', [AttendanceModesController::class, 'staticQrView'])->name('attendance.static-qr');
+    });
 });

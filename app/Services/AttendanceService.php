@@ -21,6 +21,7 @@ class AttendanceService
         'outside_network' => 'This scanner is not on an approved network.',
         'too_soon' => 'This employee scanned a moment ago. Try again in a minute.',
         'already_completed' => 'This employee has already checked in and out today.',
+        'mode_disabled' => 'This attendance capture mode is currently disabled in settings.',
     ];
 
     /**
@@ -32,6 +33,11 @@ class AttendanceService
     public function scan(string $token, string $ip, ?string $userAgent): array
     {
         $hash = QrTokenService::hash($token);
+
+        $settings = \App\Models\AttendanceSetting::current();
+        if (! $settings->dynamic_qr_enabled) {
+            return $this->reject('mode_disabled', null);
+        }
 
         return DB::transaction(function () use ($hash, $ip, $userAgent) {
             $now = now();
