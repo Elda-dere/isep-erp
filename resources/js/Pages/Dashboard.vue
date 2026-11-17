@@ -3,12 +3,25 @@ import { ref, computed } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 
 const props = defineProps({
+    role: {
+        type: String,
+        default: 'admin',
+    },
     userName: String,
+
+    // Admin Props
     stats: Object,
     inventoryItems: Array,
     recentSales: Array,
+
+    // Employee Props
+    employee: Object,
+    today: Object,
+    employeeStats: Object,
+    recentAttendance: Array,
 });
 
+// Admin Dashboard state
 const search = ref('');
 const selectedRows = ref([]);
 
@@ -91,9 +104,176 @@ const statCards = computed(() => [
 </script>
 
 <template>
-    <Head title="Dashboard" />
+    <Head :title="role === 'employee' ? 'Employee Portal' : 'Dashboard'" />
 
     <div class="min-h-full">
+        <!-- ========================================================= -->
+        <!-- 1. EMPLOYEE SELF-SERVICE DASHBOARD                        -->
+        <!-- ========================================================= -->
+        <template v-if="role === 'employee'">
+            <!-- Welcome Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-2xl font-bold text-ink tracking-tight">Welcome, {{ userName }}</h1>
+                        <span class="rounded-full bg-soft-green text-forest px-2.5 py-0.5 text-xs font-semibold border border-forest/15">
+                            Employee
+                        </span>
+                    </div>
+                    <p class="text-sm text-ink-muted mt-1" v-if="employee">
+                        {{ employee.employee_number }} · {{ employee.department }} · {{ employee.position }}
+                    </p>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <Link
+                        href="/my-qr"
+                        class="inline-flex items-center gap-2 rounded-xl bg-forest px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-forest-hover transition-colors"
+                    >
+                        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="12" y="3" width="5" height="5" rx="1"/><rect x="3" y="12" width="5" height="5" rx="1"/><rect x="13" y="13" width="4" height="4" rx="1"/></svg>
+                        Show My QR Code
+                    </Link>
+                </div>
+            </div>
+
+            <!-- Today's Attendance Card -->
+            <div class="rounded-2xl border border-border bg-surface p-6 shadow-xs mb-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border">
+                    <div>
+                        <span class="text-xs font-bold uppercase tracking-wider text-ink-muted">Today's Attendance</span>
+                        <h2 class="text-lg font-bold text-ink mt-0.5">{{ today?.date }}</h2>
+                    </div>
+
+                    <span
+                        class="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-bold border"
+                        :class="{
+                            'bg-amber-50 text-amber-800 border-amber-200': today?.state === 'not_in',
+                            'bg-emerald-50 text-emerald-800 border-emerald-200': today?.state === 'in',
+                            'bg-blue-50 text-blue-800 border-blue-200': today?.state === 'out',
+                        }"
+                    >
+                        <span
+                            class="h-2 w-2 rounded-full"
+                            :class="{
+                                'bg-amber-500': today?.state === 'not_in',
+                                'bg-emerald-500 animate-pulse': today?.state === 'in',
+                                'bg-blue-500': today?.state === 'out',
+                            }"
+                        />
+                        {{ today?.state === 'not_in' ? 'Not Checked In' : today?.state === 'in' ? 'Currently Checked In' : 'Shift Completed' }}
+                        <span v-if="today?.late" class="text-red-600 font-bold ml-1">(Late)</span>
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-5">
+                    <div class="bg-stone/30 rounded-xl p-4">
+                        <span class="text-xs text-ink-muted font-medium">Check-In Time</span>
+                        <p class="text-xl font-bold text-ink font-mono mt-1">{{ today?.check_in ?? '—' }}</p>
+                    </div>
+
+                    <div class="bg-stone/30 rounded-xl p-4">
+                        <span class="text-xs text-ink-muted font-medium">Check-Out Time</span>
+                        <p class="text-xl font-bold text-ink font-mono mt-1">{{ today?.check_out ?? '—' }}</p>
+                    </div>
+
+                    <div class="bg-stone/30 rounded-xl p-4">
+                        <span class="text-xs text-ink-muted font-medium">Hours Worked Today</span>
+                        <p class="text-xl font-bold text-ink font-mono mt-1">{{ today?.worked ?? '—' }}</p>
+                    </div>
+                </div>
+
+                <div class="mt-5 pt-4 border-t border-border flex items-center justify-between text-xs text-ink-muted">
+                    <span class="flex items-center gap-1.5">
+                        <svg class="h-4 w-4 text-forest" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="10" cy="10" r="8"/><path d="M10 7v3l2 1"/></svg>
+                        Standard work hours: 09:00 AM – 05:00 PM (Africa/Addis_Ababa)
+                    </span>
+                    <Link href="/my-qr" class="text-forest hover:underline font-semibold">
+                        Ready to scan? Open QR →
+                    </Link>
+                </div>
+            </div>
+
+            <!-- Employee Monthly Metrics Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="rounded-xl border border-border bg-surface p-4 shadow-xs">
+                    <span class="text-xs text-ink-muted font-medium">Days Present</span>
+                    <div class="text-2xl font-bold text-ink mt-1">{{ employeeStats?.days_present ?? 0 }}</div>
+                    <span class="text-[11px] text-emerald-600 font-medium">Current Month</span>
+                </div>
+
+                <div class="rounded-xl border border-border bg-surface p-4 shadow-xs">
+                    <span class="text-xs text-ink-muted font-medium">On-Time Rate</span>
+                    <div class="text-2xl font-bold text-forest mt-1">{{ employeeStats?.on_time_rate ?? '100%' }}</div>
+                    <span class="text-[11px] text-ink-faint">Punctuality Score</span>
+                </div>
+
+                <div class="rounded-xl border border-border bg-surface p-4 shadow-xs">
+                    <span class="text-xs text-ink-muted font-medium">Late Check-ins</span>
+                    <div class="text-2xl font-bold text-amber-600 mt-1">{{ employeeStats?.days_late ?? 0 }}</div>
+                    <span class="text-[11px] text-amber-600 font-medium">This Month</span>
+                </div>
+
+                <div class="rounded-xl border border-border bg-surface p-4 shadow-xs">
+                    <span class="text-xs text-ink-muted font-medium">Total Worked</span>
+                    <div class="text-2xl font-bold text-ink mt-1">{{ employeeStats?.hours_worked ?? '0h' }}</div>
+                    <span class="text-[11px] text-ink-faint">Logged Hours</span>
+                </div>
+            </div>
+
+            <!-- Recent Attendance History Table -->
+            <div class="rounded-2xl border border-border bg-surface shadow-xs overflow-hidden mb-6">
+                <div class="px-5 py-4 border-b border-border flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-ink">Recent Attendance Log</h2>
+                    <Link href="/my-attendance" class="text-xs font-semibold text-forest hover:underline">
+                        View Full History →
+                    </Link>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-border bg-stone/40 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+                                <th class="px-5 py-3 text-left">Date</th>
+                                <th class="px-5 py-3 text-left">Check In</th>
+                                <th class="px-5 py-3 text-left">Check Out</th>
+                                <th class="px-5 py-3 text-left">Hours Worked</th>
+                                <th class="px-5 py-3 text-left">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-border">
+                            <tr v-if="!recentAttendance || recentAttendance.length === 0">
+                                <td colspan="5" class="px-5 py-8 text-center text-sm text-ink-muted">
+                                    No attendance recorded yet.
+                                </td>
+                            </tr>
+
+                            <tr v-for="r in recentAttendance" :key="r.id" class="hover:bg-stone/20 transition-colors">
+                                <td class="px-5 py-3.5 whitespace-nowrap font-medium text-ink">
+                                    {{ r.date }} <span class="text-ink-muted text-xs font-normal ml-1">({{ r.day }})</span>
+                                </td>
+                                <td class="px-5 py-3.5 font-mono text-sm text-ink">{{ r.check_in }}</td>
+                                <td class="px-5 py-3.5 font-mono text-sm text-ink">{{ r.check_out }}</td>
+                                <td class="px-5 py-3.5 text-sm text-ink-muted font-medium">{{ r.worked }}</td>
+                                <td class="px-5 py-3.5 whitespace-nowrap">
+                                    <span
+                                        class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold border capitalize"
+                                        :class="r.status === 'late' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'"
+                                    >
+                                        <span class="h-1.5 w-1.5 rounded-full" :class="r.status === 'late' ? 'bg-amber-500' : 'bg-emerald-500'" />
+                                        {{ r.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </template>
+
+        <!-- ========================================================= -->
+        <!-- 2. ADMINISTRATOR / MANAGEMENT DASHBOARD                   -->
+        <!-- ========================================================= -->
+        <template v-else>
             <!-- Page Header -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
@@ -146,17 +326,11 @@ const statCards = computed(() => [
                             'bg-rose-50 text-rose-600': card.color === 'rose',
                         }"
                     >
-                        <!-- box -->
                         <svg v-if="card.icon === 'box'" class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M2 7l8-4 8 4v6l-8 4-8-4V7z"/><path d="M2 7l8 4 8-4M10 11v7"/></svg>
-                        <!-- currency -->
                         <svg v-else-if="card.icon === 'currency'" class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="10" cy="10" r="8"/><path d="M10 6v8M8 8h3a1.5 1.5 0 010 3H8v1h4"/></svg>
-                        <!-- chart -->
                         <svg v-else-if="card.icon === 'chart'" class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 15l4-4 3 3 4-5 3 3"/></svg>
-                        <!-- alert -->
                         <svg v-else-if="card.icon === 'alert'" class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M10 3L2 17h16L10 3z"/><path d="M10 9v4M10 15h.01"/></svg>
-                        <!-- users -->
                         <svg v-else-if="card.icon === 'users'" class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="8" cy="7" r="3"/><path d="M2 17a6 6 0 0112 0"/><path d="M14 5a3 3 0 010 6M18 17a6 6 0 00-5-5.9"/></svg>
-                        <!-- clock -->
                         <svg v-else-if="card.icon === 'clock'" class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="10" cy="10" r="8"/><path d="M10 6v4l3 2"/></svg>
                     </div>
 
@@ -180,7 +354,6 @@ const statCards = computed(() => [
                         </span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <!-- Search -->
                         <div class="relative">
                             <svg class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-faint" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="9" cy="9" r="6"/><path d="M15 15l3 3"/></svg>
                             <input
@@ -190,14 +363,6 @@ const statCards = computed(() => [
                                 class="w-56 rounded-lg border border-border bg-stone/50 pl-9 pr-3 py-2 text-sm text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-forest/30 focus:border-forest/50 transition"
                             />
                         </div>
-                        <!-- Filter icon -->
-                        <button
-                            type="button"
-                            class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface text-ink-muted hover:bg-stone transition-colors"
-                            title="Filter"
-                        >
-                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 5h14M6 10h8M9 15h2"/></svg>
-                        </button>
                     </div>
                 </div>
 
@@ -205,7 +370,7 @@ const statCards = computed(() => [
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
-                            <tr class="border-b border-border bg-stone/40">
+                            <tr class="border-b border-border bg-stone/40 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
                                 <th class="w-10 px-4 py-3">
                                     <input
                                         type="checkbox"
@@ -214,43 +379,30 @@ const statCards = computed(() => [
                                         @change="toggleAll"
                                     />
                                 </th>
-                                <th class="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted whitespace-nowrap">SKU</th>
-                                <th class="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Title</th>
-                                <th class="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Category</th>
-                                <th class="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-ink-muted">QTY</th>
-                                <th class="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Warehouse</th>
-                                <th class="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Price</th>
-                                <th class="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted whitespace-nowrap">Last Modified</th>
-                                <th class="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted">Status</th>
+                                <th class="px-3 py-3 text-left">SKU</th>
+                                <th class="px-3 py-3 text-left">Title</th>
+                                <th class="px-3 py-3 text-left">Category</th>
+                                <th class="px-3 py-3 text-right">QTY</th>
+                                <th class="px-3 py-3 text-left">Warehouse</th>
+                                <th class="px-3 py-3 text-right">Price</th>
+                                <th class="px-3 py-3 text-left">Last Modified</th>
+                                <th class="px-3 py-3 text-left">Status</th>
                                 <th class="px-3 py-3 w-10"></th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-border">
-                            <!-- Empty State -->
                             <tr v-if="filteredItems.length === 0">
-                                <td colspan="10" class="px-6 py-16 text-center">
-                                    <div class="flex flex-col items-center gap-3">
-                                        <div class="h-12 w-12 rounded-full bg-stone flex items-center justify-center">
-                                            <svg class="h-6 w-6 text-ink-faint" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7l8-4 8 4v6l-8 4-8-4V7z"/></svg>
-                                        </div>
-                                        <p class="text-sm font-medium text-ink-muted">No inventory items found</p>
-                                        <p class="text-xs text-ink-faint">Add products to see them here</p>
-                                        <Link href="/products/create" class="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-forest px-4 py-2 text-sm font-semibold text-white hover:bg-forest-hover transition-colors">
-                                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 4v12M4 10h12"/></svg>
-                                            Add Product
-                                        </Link>
-                                    </div>
+                                <td colspan="10" class="px-6 py-16 text-center text-ink-muted">
+                                    No inventory items found.
                                 </td>
                             </tr>
 
-                            <!-- Data Rows -->
                             <tr
                                 v-for="item in filteredItems"
                                 :key="item.id"
                                 class="hover:bg-stone/40 transition-colors"
                                 :class="{ 'bg-soft-green/30': selectedRows.includes(item.id) }"
                             >
-                                <!-- Checkbox -->
                                 <td class="px-4 py-3">
                                     <input
                                         type="checkbox"
@@ -259,75 +411,26 @@ const statCards = computed(() => [
                                         @change="toggleRow(item.id)"
                                     />
                                 </td>
-
-                                <!-- SKU -->
-                                <td class="px-3 py-3 whitespace-nowrap">
-                                    <span class="font-mono text-xs font-semibold text-ink-muted bg-stone px-2 py-0.5 rounded">{{ item.sku }}</span>
-                                </td>
-
-                                <!-- Title (with product avatar) -->
+                                <td class="px-3 py-3 font-mono text-xs font-semibold text-ink-muted">{{ item.sku }}</td>
+                                <td class="px-3 py-3 font-medium text-ink">{{ item.name }}</td>
+                                <td class="px-3 py-3 text-ink-muted text-xs">{{ item.category }}</td>
+                                <td class="px-3 py-3 text-right font-semibold text-ink">{{ item.qty }} <span class="text-xs text-ink-faint">{{ item.unit }}</span></td>
+                                <td class="px-3 py-3 text-ink-muted text-xs">{{ item.warehouse }}</td>
+                                <td class="px-3 py-3 text-right font-semibold text-ink">{{ item.price }}</td>
+                                <td class="px-3 py-3 text-xs text-ink-muted whitespace-nowrap">{{ item.last_modified }}</td>
                                 <td class="px-3 py-3">
-                                    <div class="flex items-center gap-2.5 min-w-0">
-                                        <!-- Product Avatar (initials) -->
-                                        <div class="h-8 w-8 rounded-lg bg-soft-green text-forest flex items-center justify-center font-bold text-xs shrink-0 border border-forest/10">
-                                            {{ item.name?.substring(0, 2).toUpperCase() }}
-                                        </div>
-                                        <span class="font-medium text-ink truncate max-w-[180px]">{{ item.name }}</span>
-                                    </div>
-                                </td>
-
-                                <!-- Category -->
-                                <td class="px-3 py-3 whitespace-nowrap">
-                                    <span class="rounded-full bg-stone px-2.5 py-0.5 text-xs font-medium text-ink-muted">{{ item.category }}</span>
-                                </td>
-
-                                <!-- QTY -->
-                                <td class="px-3 py-3 text-right whitespace-nowrap">
-                                    <span class="font-semibold text-ink">{{ item.qty }}</span>
-                                    <span class="text-ink-faint text-xs ml-1">{{ item.unit }}</span>
-                                </td>
-
-                                <!-- Warehouse -->
-                                <td class="px-3 py-3 whitespace-nowrap">
-                                    <span class="text-ink-muted text-xs">{{ item.warehouse }}</span>
-                                </td>
-
-                                <!-- Price -->
-                                <td class="px-3 py-3 text-right whitespace-nowrap font-semibold text-ink">
-                                    {{ item.price }}
-                                </td>
-
-                                <!-- Last Modified -->
-                                <td class="px-3 py-3 whitespace-nowrap text-xs text-ink-muted">
-                                    {{ item.last_modified }}
-                                </td>
-
-                                <!-- Status Badge -->
-                                <td class="px-3 py-3 whitespace-nowrap">
                                     <span
                                         class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                                        :class="{
-                                            'bg-emerald-50 text-emerald-700 border border-emerald-200': item.status === 'in-stock',
-                                            'bg-amber-50 text-amber-700 border border-amber-200': item.status === 'low',
-                                        }"
+                                        :class="item.status === 'in-stock' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'"
                                     >
-                                        <span
-                                            class="h-1.5 w-1.5 rounded-full"
-                                            :class="{
-                                                'bg-emerald-500': item.status === 'in-stock',
-                                                'bg-amber-500': item.status === 'low',
-                                            }"
-                                        />
+                                        <span class="h-1.5 w-1.5 rounded-full" :class="item.status === 'in-stock' ? 'bg-emerald-500' : 'bg-amber-500'" />
                                         {{ item.status === 'in-stock' ? 'In Stock' : 'Low Stock' }}
                                     </span>
                                 </td>
-
-                                <!-- Edit -->
                                 <td class="px-3 py-3">
                                     <Link
                                         :href="`/products/${item.id}/edit`"
-                                        class="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-ink-muted hover:text-forest hover:bg-soft-green hover:border-forest/20 transition-colors"
-                                        title="Edit product"
+                                        class="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-ink-muted hover:text-forest hover:bg-soft-green transition-colors"
                                     >
                                         <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M13.5 3.5a2.121 2.121 0 013 3L7 16l-4 1 1-4 9.5-9.5z"/></svg>
                                     </Link>
@@ -337,53 +440,35 @@ const statCards = computed(() => [
                     </table>
                 </div>
 
-                <!-- Table Footer -->
                 <div v-if="filteredItems.length > 0" class="flex items-center justify-between px-5 py-3 border-t border-border bg-stone/20">
                     <span class="text-xs text-ink-muted">
                         Showing {{ filteredItems.length }} item{{ filteredItems.length !== 1 ? 's' : '' }}
-                        <span v-if="selectedRows.length"> · {{ selectedRows.length }} selected</span>
                     </span>
-                    <div class="flex items-center gap-2">
-                        <Link href="/stock" class="text-xs font-medium text-forest hover:underline">View full inventory →</Link>
-                    </div>
+                    <Link href="/stock" class="text-xs font-medium text-forest hover:underline">View full inventory →</Link>
                 </div>
             </div>
 
-            <!-- Bottom: Recent Sales (if any) -->
+            <!-- Recent Sales panel -->
             <div v-if="recentSales && recentSales.length > 0" class="mt-4 rounded-xl border border-border bg-surface shadow-xs overflow-hidden">
                 <div class="px-5 py-4 border-b border-border flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <svg class="h-4 w-4 text-ink-muted" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 4h12a1 1 0 011 1v2a1 1 0 01-.293.707L12 12.414V17l-4-2v-2.586L3.293 7.707A1 1 0 013 7V5a1 1 0 011-1z"/></svg>
-                        <h2 class="text-sm font-semibold text-ink">Recent Sales</h2>
-                    </div>
+                    <h2 class="text-sm font-semibold text-ink">Recent Sales</h2>
                     <Link href="/sales" class="text-xs font-medium text-forest hover:underline">View all →</Link>
                 </div>
                 <div class="divide-y divide-border">
                     <div v-for="sale in recentSales" :key="sale.id" class="flex items-center justify-between px-5 py-3 hover:bg-stone/30 transition-colors">
-                        <div class="flex items-center gap-3">
-                            <div class="h-8 w-8 rounded-lg bg-soft-green text-forest flex items-center justify-center font-bold text-xs border border-forest/10">
-                                {{ sale.customer?.substring(0, 2).toUpperCase() }}
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium text-ink">{{ sale.customer }}</p>
-                                <p class="text-xs text-ink-muted">{{ sale.number }} · {{ sale.date }}</p>
-                            </div>
+                        <div>
+                            <p class="text-sm font-medium text-ink">{{ sale.customer }}</p>
+                            <p class="text-xs text-ink-muted">{{ sale.number }} · {{ sale.date }}</p>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="font-semibold text-sm text-ink">{{ sale.amount }}</span>
-                            <span
-                                class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                                :class="{
-                                    'bg-emerald-50 text-emerald-700 border border-emerald-200': sale.status === 'paid',
-                                    'bg-amber-50 text-amber-700 border border-amber-200': sale.status === 'pending',
-                                    'bg-red-50 text-red-700 border border-red-200': sale.status === 'cancelled',
-                                }"
-                            >
-                                {{ sale.status.charAt(0).toUpperCase() + sale.status.slice(1) }}
+                            <span class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold border capitalize" :class="sale.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'">
+                                {{ sale.status }}
                             </span>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </template>
+    </div>
 </template>
