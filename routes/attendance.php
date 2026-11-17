@@ -2,12 +2,16 @@
 
 use App\Http\Controllers\Attendance\AttendanceBoardController;
 use App\Http\Controllers\Attendance\AttendanceModesController;
+use App\Http\Controllers\Attendance\CheckInController;
 use App\Http\Controllers\Attendance\MyAttendanceController;
 use App\Http\Controllers\Attendance\MyQrController;
 use App\Http\Controllers\Attendance\ScannerController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->group(function () {
+    // Mobile Check-In when scanned directly with a smartphone camera
+    Route::get('/attendance/check-in', [CheckInController::class, 'handle'])->name('attendance.check-in');
+
     Route::middleware(['permission:qr.own', 'throttle:30,1'])->group(function () {
         Route::get('/my-qr', [MyQrController::class, 'show'])->name('attendance.my-qr');
     });

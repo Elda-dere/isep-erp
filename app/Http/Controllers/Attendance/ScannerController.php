@@ -26,6 +26,11 @@ class ScannerController
         $raw = $request->input('token');
         $token = is_string($raw) ? trim($raw) : '';
 
+        // Extract 64-hex token if a full URL was scanned
+        if (preg_match('/([0-9a-f]{64})/i', $token, $matches)) {
+            $token = strtolower($matches[1]);
+        }
+
         // Anything that is not shaped like one of our codes is somebody else's QR code.
         if (preg_match('/^[0-9a-f]{64}$/', $token) !== 1) {
             return response()->json([

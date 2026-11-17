@@ -34,7 +34,9 @@ async function draw() {
     drawFailed.value = false;
 
     try {
-        image.value = await QRCode.toDataURL(props.qr.token, {
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        const checkInUrl = `${origin}/attendance/check-in?token=${props.qr.token}`;
+        image.value = await QRCode.toDataURL(checkInUrl, {
             width: 280,
             margin: 2,
             errorCorrectionLevel: 'M',
