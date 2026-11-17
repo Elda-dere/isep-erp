@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth')->group(function () {
     // Mobile Check-In when scanned directly with a smartphone camera
     Route::get('/attendance/check-in', [CheckInController::class, 'handle'])->name('attendance.check-in');
+    Route::get('/attendance/static-qr', [AttendanceModesController::class, 'staticQrView'])->name('attendance.static-qr');
 
     Route::middleware(['permission:qr.own', 'throttle:30,1'])->group(function () {
         Route::get('/my-qr', [MyQrController::class, 'show'])->name('attendance.my-qr');
@@ -42,6 +43,5 @@ Route::middleware('auth')->group(function () {
         Route::post('/attendance/modes/devices', [AttendanceModesController::class, 'storeDevice'])->name('attendance.modes.devices.store');
         Route::delete('/attendance/modes/devices/{device}', [AttendanceModesController::class, 'destroyDevice'])->name('attendance.modes.devices.destroy');
         Route::post('/attendance/modes/devices/{device}/sync', [AttendanceModesController::class, 'syncDevice'])->name('attendance.modes.devices.sync');
-        Route::get('/attendance/static-qr', [AttendanceModesController::class, 'staticQrView'])->name('attendance.static-qr');
     });
 });
