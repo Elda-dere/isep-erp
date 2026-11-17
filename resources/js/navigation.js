@@ -45,6 +45,7 @@ export const navigationGroups = [
             { label: 'Attendance summary', href: '/attendance/summary', permission: 'attendance.view_all', icon: 'attendance-summary' },
             { label: 'Scanner', href: '/scanner', permission: 'attendance.scan', icon: 'scanner', badge: 'Kiosk' },
             { label: 'My QR', href: '/my-qr', permission: 'qr.own', icon: 'my-qr' },
+            { label: 'Capture modes', href: '/attendance/modes', permission: 'attendance.view_all', icon: 'my-qr' },
             { label: 'My attendance', href: '/my-attendance', permission: 'attendance.view_own', icon: 'my-attendance' },
             { label: 'Employees', href: '/employees', permission: ['employees.view', 'employees.manage'], icon: 'employees' },
             { label: 'Organisation', href: '/organisation', permission: 'employees.view', icon: 'organisation' },
