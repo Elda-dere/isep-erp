@@ -153,9 +153,32 @@ class AttendanceModesController
     {
         $settings = AttendanceSetting::current();
 
+        $ips = [];
+        @exec('ipconfig', $lines);
+        if (is_array($lines)) {
+            foreach ($lines as $line) {
+                if (preg_match('/IPv4 Address.*:\s*([0-9\.]+)/', $line, $matches)) {
+                    $ip = trim($matches[1]);
+                    if (! str_starts_with($ip, '127.') && ! str_starts_with($ip, '169.') && ! in_array($ip, $ips, true)) {
+                        $ips[] = $ip;
+                    }
+                }
+            }
+        }
+
+        usort($ips, function ($a, $b) {
+            $isWifiA = str_starts_with($a, '10.4.') || str_starts_with($a, '192.168.1.');
+            $isWifiB = str_starts_with($b, '10.4.') || str_starts_with($b, '192.168.1.');
+            return $isWifiB <=> $isWifiA;
+        });
+
+        $primaryIp = $ips[0] ?? '127.0.0.1';
+
         return Inertia::render('Attendance/StaticQr', [
             'token' => $settings->static_qr_token,
             'enabled' => $settings->static_qr_enabled,
+            'localIp' => $primaryIp,
+            'availableIps' => $ips,
         ]);
     }
 }

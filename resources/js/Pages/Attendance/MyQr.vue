@@ -8,12 +8,22 @@ const props = defineProps({
     employeeName: String,
     message: String,
     qr: Object,
+    localIp: {
+        type: String,
+        default: '10.4.108.201',
+    },
+    availableIps: {
+        type: Array,
+        default: () => ['10.4.108.201'],
+    },
 });
 
 const image = ref('');
 const secondsLeft = ref(0);
 const refreshing = ref(false);
 const drawFailed = ref(false);
+
+const selectedHost = ref(props.localIp ? `http://${props.localIp}` : 'http://isep-erp.test');
 
 let deadline = 0;
 let timer = null;
@@ -34,8 +44,8 @@ async function draw() {
     drawFailed.value = false;
 
     try {
-        const origin = typeof window !== 'undefined' ? window.location.origin : '';
-        const checkInUrl = `${origin}/attendance/check-in?token=${props.qr.token}`;
+        const base = selectedHost.value || (typeof window !== 'undefined' ? window.location.origin : '');
+        const checkInUrl = `${base}/attendance/check-in?token=${props.qr.token}`;
         image.value = await QRCode.toDataURL(checkInUrl, {
             width: 280,
             margin: 2,
