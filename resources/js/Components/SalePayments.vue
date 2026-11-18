@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue';
-import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import PaymentLink from './PaymentLink.vue';
 import StatusBadge from './StatusBadge.vue';
 import { formatDateTime, formatMoney } from '../format.js';
@@ -25,6 +25,39 @@ const form = useForm({});
 function start() {
     form.post(`/sales/${props.sale.id}/payments`, { preserveScroll: true });
 }
+
+// ---- Live update ----
+// The customer pays on THEIR phone, so nothing on this page changes by itself. While a payment is
+// waiting, we ask the server for fresh data every 4 seconds. This only reads our own database (it does
+// not call Chapa): the sale turns "Paid" as soon as the webhook, the customer's return page or the
+// reconciliation job has settled the payment. It stops by itself when nothing is waiting.
+const waiting = computed(
+    () => props.sale.status === 'pending' && props.payments.some((payment) => payment.status === 'pending'),
+);
+
+let timer = null;
+
+function poll() {
+    // Do not ask while the tab is hidden: nobody is looking.
+    if (document.visibilityState === 'visible') {
+        router.reload({ only: ['sale', 'payments'], preserveScroll: true });
+    }
+}
+
+function sync() {
+    if (waiting.value && timer === null) {
+        timer = setInterval(poll, 4000);
+    } else if (!waiting.value && timer !== null) {
+        clearInterval(timer);
+        timer = null;
+    }
+}
+
+onMounted(sync);
+watch(waiting, sync);
+onBeforeUnmount(() => {
+    if (timer !== null) clearInterval(timer);
+});
 </script>
 
 <template>
@@ -42,6 +75,10 @@ function start() {
         >
             {{ form.processing ? 'Creating the link…' : 'Pay with Chapa' }}
         </button>
+
+        <p v-if="waiting" role="status" class="mt-3 text-sm text-gray-600">
+            Waiting for the customer to pay… this page updates by itself.
+        </p>
 
         <ul class="mt-3 space-y-3">
             <li v-for="payment in payments" :key="payment.id" class="rounded border bg-white p-3">
